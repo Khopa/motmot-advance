@@ -4,6 +4,8 @@
 
 A word-guessing game for the Game Boy Advance.
 
+![](assets/market/Mot.Mot.Advance-image.png)
+
 | Title | Menu | Game | Marathon | Time Attack |
 |---|---|---|---|---|
 | ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/marathon.png) | ![](docs/time_attack.png) |
