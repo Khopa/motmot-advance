@@ -1,17 +1,10 @@
-// Shared basic types. The game logic (logic.c) is platform independent so it
-// can be unit-tested on the host: it only needs the fixed-width typedefs.
+// Shared basic types. With HOST_TEST defined (tests/unit), the GBA headers
+// are replaced by a shim so the game modules compile and run on a PC.
 #ifndef COMMON_H
 #define COMMON_H
 
 #ifdef HOST_TEST
-#include <stdint.h>
-#include <stdbool.h>
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef int8_t   s8;
-typedef int16_t  s16;
-typedef int32_t  s32;
+#include "host_shim.h"      // tests/unit: fake registers and SRAM
 #else
 #include <tonc.h>
 #endif

@@ -2,8 +2,9 @@
 # Build from an MSYS2 shell with devkitPro installed (DEVKITPRO=/opt/devkitpro):
 #     make            -> build/motmot.gba
 #     make run        -> launch in mGBA
-#     make test       -> host-side unit tests of the game logic
-#     make smoke      -> end-to-end test in mGBA (needs a build with --script)
+#     make test       -> unit tests on the host (tests/unit)
+#     make emutest    -> scenarios in mGBA (tests/emu, needs a build with --script)
+#     make check      -> both
 #     make clean
 
 TARGET   := motmot
@@ -46,7 +47,7 @@ SRCS := $(wildcard source/*.c)
 OBJS := $(patsubst source/%.c,$(BUILD)/%.o,$(SRCS)) \
         $(patsubst $(GEN)/%.c,$(BUILD)/%.o,$(GFX_SRCS) $(WL_SRCS))
 
-.PHONY: all clean run gen assets wordlists test smoke
+.PHONY: all clean run gen assets wordlists test emutest check
 all: $(BUILD)/$(TARGET).gba
 
 gen: $(GFX_SRCS) $(WL_SRCS)
@@ -86,12 +87,28 @@ $(BUILD) $(GEN):
 run: $(BUILD)/$(TARGET).gba
 	$(MGBA) $< &
 
-test: | $(BUILD)
-	$(HOSTCC) -std=gnu11 -Wall -Wextra -O1 -DHOST_TEST -Iinclude tests/test_logic.c source/logic.c -o $(BUILD)/test_logic
-	$(BUILD)/test_logic
+# ---------------------------------------------------------------------------
+# Tests (see tests/README.md)
+# ---------------------------------------------------------------------------
+# Host unit tests: the game modules below compile on the PC against
+# tests/unit/host_shim.h (fake registers and SRAM).
+UNIT_GAME_SRCS := source/logic.c source/keyboard.c source/rng.c source/stats.c                   source/sound.c source/lang.c
+UNIT_SRCS := $(wildcard tests/unit/*.c) $(UNIT_GAME_SRCS) $(WL_SRCS)
+UNIT_FLAGS := -std=gnu11 -Wall -Wextra -O1 -g -DHOST_TEST -Iinclude -Itests/unit -I$(GEN)
 
-smoke: $(BUILD)/$(TARGET).gba
-	$(PYTHON) tests/smoke.py --rom $<
+$(BUILD)/unit_tests: $(UNIT_SRCS) $(wildcard include/*.h tests/unit/*.h) | $(BUILD)
+	$(HOSTCC) $(UNIT_FLAGS) $(UNIT_SRCS) -o $@
+
+test: $(BUILD)/unit_tests
+	$(BUILD)/unit_tests $(TESTFLAGS)
+
+# Emulator tests: tests/emu/run.py drives the ROM in mGBA through Lua scenarios.
+#   make emutest                    every scenario
+#   make emutest SCENARIO=04_classic_win
+emutest: $(BUILD)/$(TARGET).gba
+	$(PYTHON) tests/emu/run.py --rom $< $(SCENARIO)
+
+check: test emutest
 
 clean:
 	rm -rf $(BUILD)

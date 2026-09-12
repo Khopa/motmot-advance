@@ -51,8 +51,9 @@ Requirements: [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the
 ```sh
 make            # -> build/motmot.gba
 make run        # launch the ROM in mGBA (override the path with MGBA=...)
-make test       # unit tests of the game logic, built with the host gcc
-make smoke      # end-to-end test in mGBA (see below)
+make test       # unit tests on the host (tests/unit)
+make emutest    # scenarios played in mGBA (tests/emu)
+make check      # both
 make clean
 ```
 
@@ -98,17 +99,19 @@ charblock 2 = pattern; screenblocks 28/29/30; the only sprite is the cursor.
 
 ## Tests
 
-- `make test`: `tests/test_logic.c` compiles `logic.c` with the host compiler
-  and checks scoring (including doubled letters), validation, typing,
-  win / loss and keyboard colour updates.
-- `make smoke`: `tests/smoke.py` drives the ROM in mGBA with a Lua script
-  (needs an mGBA with the `--script` option, available in the 0.11
-  development builds; use `--mgba` to point at it). The script reads the game
-  state from RAM (addresses taken from the ELF), types words on the virtual
-  keyboard, wins a game, loses a game, checks the statistics, cancels and
-  confirms a quit, plays Marathon runs in both difficulties, watches
-  the sound registers, then reboots the ROM to
-  verify SRAM persistence. Screenshots land in `tests/out/`.
+See [tests/README.md](tests/README.md).
+
+- `make test` — 86 unit tests on the host: the game modules (rules, keyboard,
+  RNG, SRAM persistence, sound sequencer, language tables and word lists) are
+  compiled with `gcc` against a shim that replaces the GBA registers and SRAM
+  with plain memory.
+- `make emutest` — 13 scenarios played in mGBA by Lua scripts (boot, menu,
+  keyboard, classic win/loss, quit confirmation, Marathon easy/hard/game over,
+  sound switch, language switch, SRAM persistence across a reboot, random
+  input for 30000 frames). Assertions read the ROM's RAM; the emulator runs
+  unthrottled so the whole suite takes about 15 s. Needs an mGBA 0.11
+  development build (`--script`).
+- `make check` — both.
 
 ## Word list sources
 

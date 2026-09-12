@@ -18,6 +18,7 @@ typedef enum {
 
 static GameState game;
 static KbCursor  kb;
+volatile u8      current_screen;    // Screen being run; only read by tests/emu through RAM
 static u32       frames;            // since power-on; entropy for the RNG
 static u8        menu_lang;         // language shown/selected in the menu
 static int       menu_item;
@@ -601,6 +602,7 @@ int main(void)
 
     Screen scr = SCR_LANG;
     for (;;) {
+        current_screen = scr;
         switch (scr) {
         case SCR_TITLE:           scr = title_screen();           break;
         case SCR_LANG:            scr = lang_screen();            break;

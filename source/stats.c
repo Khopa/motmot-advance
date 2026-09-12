@@ -55,7 +55,8 @@ void stats_load(void)
 
     sram_read(&save, sizeof save);
     if (save.magic != SAVE_MAGIC || save.version != SAVE_VERSION
-            || save.checksum != checksum(&save) || save.lang >= LANG_COUNT) {
+            || save.checksum != checksum(&save) || save.lang >= LANG_COUNT
+            || save.marathon_diff >= DIFF_COUNT || save.sound_on > 1) {
         defaults();
         stats_save();
     }

@@ -52,8 +52,9 @@ groupe `gba-dev` (devkitARM, libtonc, gbafix), GNU make, Python 3 avec
 ```sh
 make            # -> build/motmot.gba
 make run        # lance la ROM dans mGBA (variable MGBA pour changer le chemin)
-make test       # tests unitaires de la logique, compilés avec le gcc hôte
-make smoke      # test de bout en bout dans mGBA (voir plus bas)
+make test       # tests unitaires sur PC (tests/unit)
+make emutest    # scénarios joués dans mGBA (tests/emu)
+make check      # les deux
 make clean
 ```
 
@@ -99,18 +100,20 @@ charblock 2 = motif ; screenblocks 28/29/30 ; l'unique sprite est le curseur.
 
 ## Tests
 
-- `make test` : `tests/test_logic.c` compile `logic.c` avec le compilateur de
-  l'hôte et vérifie le scoring (dont les lettres doublées), la validation, la
-  saisie, la victoire / défaite et la mise à jour des couleurs du clavier.
-- `make smoke` : `tests/smoke.py` pilote la ROM dans mGBA avec un script Lua
-  (nécessite un mGBA avec l'option `--script`, disponible dans les builds de
-  développement 0.11 : `--mgba` pour indiquer le chemin). Le script lit
-  l'état du jeu en RAM (adresses tirées de l'ELF), tape des mots au clavier
-  virtuel, gagne une partie, en perd une, vérifie les statistiques, annule
-  puis confirme une sortie, joue des Marathons dans les deux difficultés,
-  surveille les registres son, puis redémarre la ROM
-  pour vérifier la persistance SRAM. Les captures d'écran vont dans
-  `tests/out/`.
+Détails dans [tests/README.md](tests/README.md) (en anglais).
+
+- `make test` — 86 tests unitaires sur PC : les modules du jeu (règles,
+  clavier, RNG, persistance SRAM, séquenceur son, tables de langue et listes
+  de mots) sont compilés avec `gcc` contre un shim qui remplace les registres
+  GBA et la SRAM par de la mémoire ordinaire.
+- `make emutest` — 13 scénarios joués dans mGBA par des scripts Lua
+  (démarrage, menu, clavier, victoire/défaite en Classique, confirmation de
+  sortie, Marathon facile/difficile/game over, option son, changement de
+  langue, persistance SRAM après redémarrage, entrées aléatoires pendant
+  30 000 frames). Les assertions lisent la RAM de la ROM ; l'émulateur tourne
+  sans limitation de vitesse, la suite complète prend ~15 s. Nécessite un
+  build de développement mGBA 0.11 (`--script`).
+- `make check` — les deux.
 
 ## Sources des listes de mots
 

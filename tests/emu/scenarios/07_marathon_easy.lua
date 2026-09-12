@@ -1,0 +1,63 @@
+-- Marathon, easy: 3 lives, a missed word costs one, the score counts the
+-- words found, quitting records the high score, replay resets the run.
+T.run(function()
+  T.boot(T.LANG.FR)
+  T.menu_set(T.MENU.MARATHON, function() return T.save().marathon_diff end, T.DIFF.EASY)
+  T.press(T.K.A); T.wait(3)
+  T.check_eq(T.screen(), T.SCREEN.GAME, "marathon game screen")
+  local m = T.marathon()
+  T.check_eq(T.game().mode, T.MODE.MARATHON, "mode is marathon")
+  T.check_eq(m.difficulty, T.DIFF.EASY, "easy difficulty")
+  T.check_eq(m.hp .. "/" .. m.hp_max, "3/3", "three lives")
+  T.check_eq(m.score, 0, "score starts at 0")
+  T.shot("start")
+
+  -- two words in a row
+  local first = T.target()
+  T.solve()
+  T.check_eq(T.marathon().score, 1, "first word found: score 1")
+  T.check_eq(T.game().status, T.STATUS.WON, "won state shown before the next word")
+  T.shot("word_found")
+  T.press(T.K.A); T.wait(3)                     -- skip the pause
+  T.check_eq(T.game().n_guesses, 0, "next word: fresh grid")
+  T.check(T.target() ~= first, "next word differs")
+  T.check_eq(T.game().status, T.STATUS.PLAYING, "playing again")
+  T.solve()
+  T.check_eq(T.marathon().score, 2, "second word: score 2")
+  T.wait(T.MARATHON_PAUSE + 10)
+  T.check_eq(T.game().n_guesses, 0, "the pause ends by itself")
+
+  -- a missed word costs one life, keyboard colours reset for the next word
+  local used = {}
+  for _ = 1, 6 do T.type_word(T.wrong_word(used)); T.submit() end
+  T.check_eq(T.game().status, T.STATUS.LOST, "word missed")
+  T.check_eq(T.marathon().hp, 2, "one life lost")
+  T.check_eq(T.marathon().score, 2, "score unchanged by a miss")
+  T.shot("life_lost")
+  T.press(T.K.A); T.wait(3)
+  T.check_eq(T.game().key_state("T"), T.FB.NONE, "keyboard colours reset for the new word")
+  T.solve()
+  T.check_eq(T.marathon().score, 3, "third word found: score 3")
+  T.press(T.K.A); T.wait(3)
+
+  -- quit: the run ends and the score is recorded
+  T.quit(true)
+  T.check_eq(T.screen(), T.SCREEN.MARATHON_RESULT, "marathon result screen after quitting")
+  T.check(T.marathon().new_record, "3 is a new record")
+  T.check_eq(T.save().marathon_best[0], 3, "easy high score saved")
+  T.shot("result")
+
+  -- replay from the result screen
+  T.press(T.K.A); T.wait(3)
+  T.check_eq(T.screen(), T.SCREEN.GAME, "A replays")
+  m = T.marathon()
+  T.check_eq(m.score, 0, "score reset")
+  T.check_eq(m.hp, 3, "lives reset")
+  T.solve(); T.press(T.K.A); T.wait(3)
+  T.quit(true)
+  T.check(not T.marathon().new_record, "1 is not a new record")
+  T.check_eq(T.save().marathon_best[0], 3, "high score kept")
+  T.shot("result_no_record")
+  T.press(T.K.B); T.wait(3)
+  T.check_eq(T.screen(), T.SCREEN.MENU, "B returns to the menu")
+end)
