@@ -1,5 +1,15 @@
 # MotMot Advance
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Khopa/motmot-advance?style=flat-square" alt="Licence MIT"></a>
+  <img src="https://img.shields.io/badge/platform-Game%20Boy%20Advance-7b68ee?style=flat-square" alt="Platform: Game Boy Advance">
+  <img src="https://img.shields.io/badge/language-C-00599c?style=flat-square" alt="Written in C">
+  <img src="https://img.shields.io/badge/toolchain-devkitARM%20%2B%20libtonc-2ea44f?style=flat-square" alt="devkitARM + libtonc">
+  <img src="https://img.shields.io/badge/languages-FR%20EN%20ES%20DE%20IT-f5c400?style=flat-square" alt="Cinq langues">
+  <img src="https://img.shields.io/badge/tests-101%20unit%20%2B%2014%20emulator-blue?style=flat-square" alt="Tests">
+  <a href="https://github.com/Khopa/motmot-advance/commits/main"><img src="https://img.shields.io/github/last-commit/Khopa/motmot-advance?style=flat-square" alt="Dernier commit"></a>
+</p>
+
 *English version: [README.md](README.md)*
 
 Un jeu de lettres pour la Game Boy Advance.
@@ -9,7 +19,6 @@ Un jeu de lettres pour la Game Boy Advance.
   &nbsp;&nbsp;
   <img src="docs/demo.gif" height="320" alt="Démo MotMot Advance">
 </p>
-<p align="center"><a href="assets/market/Mot.Mot.Advance-thumb-video.mp4">Bande-annonce (mp4)</a></p>
 
 <p align="center">
   <img src="docs/title.png" width="150" alt="Titre">
