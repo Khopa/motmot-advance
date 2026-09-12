@@ -7,9 +7,9 @@ green / yellow / grey feedback, a D-pad driven virtual keyboard, two languages
 (French and English), statistics saved to SRAM and a deterministic Challenge
 mode. Written in C with libtonc — no assembly, no C++.
 
-| Title | Menu | Game | Result |
-|---|---|---|---|
-| ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/result.png) |
+| Title | Language | Menu | Game | Result |
+|---|---|---|---|---|
+| ![](docs/title.png) | ![](docs/language.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/result.png) |
 
 ## Features
 

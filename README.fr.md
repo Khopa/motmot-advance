@@ -7,9 +7,9 @@ Portage de Wordle sur Game Boy Advance : un mot de 5 lettres à deviner en
 (français, anglais), statistiques sauvegardées en SRAM et un mode Challenge
 déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
 
-| Titre | Menu | Partie | Résultat |
-|---|---|---|---|
-| ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/result.png) |
+| Titre | Langue | Menu | Partie | Résultat |
+|---|---|---|---|---|
+| ![](docs/title.png) | ![](docs/language.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/result.png) |
 
 ## Fonctionnalités
 
