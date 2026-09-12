@@ -2,11 +2,7 @@
 
 *English version: [README.md](README.md)*
 
-Un jeu de lettres pour Game Boy Advance dans l'esprit de l'émission *Motus* :
-trouver un mot de 5 lettres en 6 essais, feedback vert / jaune / gris sur
-chaque lettre, clavier virtuel au pad, cinq langues (français, anglais,
-espagnol, allemand, italien), effets sonores chiptune, statistiques sauvegardées en SRAM, un mode
-Marathon avec des vies et des records, et un mode Time Attack avec classements. Écrit en C avec libtonc, sans assembleur ni C++.
+Un jeu de lettres pour la Game Boy Advance.
 
 | Titre | Menu | Partie | Marathon | Time Attack |
 |---|---|---|---|---|
@@ -14,30 +10,15 @@ Marathon avec des vies et des records, et un mode Time Attack avec classements. 
 
 ## Fonctionnalités
 
-- Choix de la langue au démarrage, écran titre, menu principal (Classique,
-  Marathon, Time Attack, Records, Statistiques, Options).
+- Choix de la langue au démarrage
 - **Mode Classique** : mot tiré au hasard parmi ~500 mots courants, sans
   répéter les 8 derniers mots joués.
 - **Mode Marathon** : des mots aléatoires enchaînés, avec des vies et un
   record sauvegardé par difficulté. Facile : 3 vies, un mot raté en coûte
-  une. Difficile : 5 vies, chaque essai à partir du troisième en coûte une —
-  il faut trouver vite.
-- **Time Attack** : 5, 10 ou 15 mots le plus vite possible ; le chrono tourne
-  pendant les révélations, un mot raté coûte 30 s. Chaque longueur a son
-  classement (top 3) avec initiales façon arcade, visible dans l'écran
-  Records et en face de chaque longueur au lancement.
-- Validation des mots contre une liste large par langue (4 900 à 8 700 mots ;
-  accents retirés, umlauts allemands écrits ae/oe/ue/ss).
-- Clavier AZERTY en français, QWERTZ en allemand, QWERTY ailleurs, avec
-  touches Entrée / Effacer.
-- Effets sonores sur les générateurs de son Game Boy : clic de touche, buzzer
-  sur un mot inconnu, une note différente par couleur révélée, fanfare de
-  victoire, jingle de défaite. Désactivables dans le menu (sauvegardé).
-- Statistiques persistantes (SRAM), communes à tous les modes : mots joués
-  et trouvés, série en cours et record, répartition par nombre d'essais,
-  parties Classique résolues ; plus les records Marathon et les classements
-  Time Attack.
-- Interface entièrement traduite dans la langue choisie.
+  une. Difficile : 5 vies, mais chaque essai à partir du troisième en coûte une.
+- **Time Attack** : 5, 10 ou 15 mots le plus vite possible
+- Validation des mots contre une liste large par langue (4 900 à 8 700 mots).
+- Statistiques persistantes dans la cartouche (SRAM)
 
 ## Contrôles
 
@@ -72,7 +53,7 @@ Sous Windows, lancer `make` depuis le shell MSYS2 fourni par devkitPro
 La ROM déclare une sauvegarde SRAM (`SRAM_V113`) ; mGBA et les linkers de
 flashcart la détectent automatiquement.
 
-## Chaîne d'outils maison (pas de grit)
+## Chaîne de traitement des assets
 
 Tout ce qui est généré l'est à la compilation, dans `build/gen/` :
 
@@ -82,9 +63,6 @@ Tout ce qui est généré l'est à la compilation, dans `build/gen/` :
 | `tools/png2gba.py` | Convertit un PNG en tuiles 4bpp + palette BGR555 sous forme de tableaux C. Option `--meta 2 2` (via `assets/<nom>.opts`) pour émettre les tuiles par métatuile 16×16. |
 | `tools/gen_wordlist.py` | Transforme `data/<langue>_solutions.txt` et `data/<langue>_valid.txt` en tableaux C : solutions et mots valides triés (recherche dichotomique). |
 | `tools/build_wordlists.py` | Reconstruit les fichiers `data/*.txt` depuis les sources externes (réseau nécessaire, `make wordlists`). |
-
-Les couleurs (vert / jaune / gris / neutre) ne sont pas dans les tuiles : une
-seule tuile par lettre, colorée par bank de palette (`SE_PALBANK`).
 
 ## Architecture
 
@@ -103,7 +81,7 @@ include/game_state.h état d'une partie (mot cible, essais, feedback, clavier)
 include/stats.h      structure sauvegardée
 ```
 
-Mémoire vidéo : charblock 0 = police (+ motif du titre), charblock 1 = cases
+Mémoire vidéo et affichage: charblock 0 = police (+ motif du titre), charblock 1 = cases
 et touches ; screenblocks 28/29/30. BG2 est un second calque texte décalé de
 4 px : les lignes centrées de longueur impaire y sont dessinées pour partager
 exactement le centre des lignes paires ; il porte aussi le motif du titre et

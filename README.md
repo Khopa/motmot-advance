@@ -2,11 +2,7 @@
 
 *Version française : [README.fr.md](README.fr.md)*
 
-A word-guessing game for the Game Boy Advance in the spirit of the TV show
-*Motus*: find a 5-letter word in 6 tries with green / yellow / grey feedback
-on every letter, a D-pad driven virtual keyboard, five languages (French,
-English, Spanish, German, Italian), chiptune sound effects, statistics saved to SRAM, a Marathon
-mode with lives and high scores, and a Time Attack mode with leaderboards. Written in C with libtonc — no assembly, no C++.
+A word-guessing game for the Game Boy Advance.
 
 | Title | Menu | Game | Marathon | Time Attack |
 |---|---|---|---|---|
@@ -14,28 +10,15 @@ mode with lives and high scores, and a Time Attack mode with leaderboards. Writt
 
 ## Features
 
-- Language selection at boot, title screen, main menu (Classic, Marathon,
-  Time Attack, Records, Statistics, Options).
+- Language selection: French, English, Spanish, German, Italian
 - **Classic mode**: a random word among ~500 common words, never repeating
   the last 8 words played.
 - **Marathon mode**: random words one after another, with lives and a saved
   high score per difficulty. Easy: 3 lives, a missed word costs one. Hard:
   5 lives, every guess from the third one costs one — solve fast or bleed.
-- **Time Attack**: 5, 10 or 15 words as fast as possible; the clock runs
-  through the reveals, a missed word costs 30 s. Each length has its own
-  top-3 leaderboard with arcade-style initials, shown on the Records screen
-  and next to each length when starting a run.
-- Guesses are validated against a large list per language (4,900 to 8,700
-  words; accents are stripped, German umlauts are written ae/oe/ue/ss).
-- AZERTY layout in French, QWERTZ in German, QWERTY elsewhere, with
-  Enter / Backspace keys.
-- Sound effects on the Game Boy tone generators: key clicks, buzzer on an
-  unknown word, a different note for each revealed colour, win fanfare, loss
-  jingle. Can be switched off in the menu (saved).
-- Persistent statistics (SRAM), global to every mode: words played and
-  found, current and best streak, guess distribution, classic games solved;
-  plus the Marathon high scores and Time Attack leaderboards.
-- The whole interface is translated into the selected language.
+- **Time Attack**: 5, 10 or 15 words to solve as fast as possible
+- Guesses are validated against a large list per language (4,900 to 8,700 words)
+- Persistent statistics saved in the cartridge SRAM
 
 ## Controls
 
@@ -70,7 +53,7 @@ On Windows, run `make` from the MSYS2 shell shipped with devkitPro
 The ROM declares an SRAM save (`SRAM_V113`); mGBA and flash-cart loaders
 detect it automatically.
 
-## Home-made toolchain (no grit)
+## Asset toolchain
 
 Everything generated is produced at build time in `build/gen/`:
 
@@ -80,9 +63,6 @@ Everything generated is produced at build time in `build/gen/`:
 | `tools/png2gba.py` | Converts a PNG into 4bpp tiles + BGR555 palette as C arrays. `--meta 2 2` (through `assets/<name>.opts`) emits tiles in 16×16 metatile order. |
 | `tools/gen_wordlist.py` | Turns `data/<lang>_solutions.txt` and `data/<lang>_valid.txt` into C tables: solutions and sorted valid words (binary search). |
 | `tools/build_wordlists.py` | Rebuilds the `data/*.txt` files from the external sources (needs network, `make wordlists`). |
-
-Colours (green / yellow / grey / neutral) are not baked into the tiles: there
-is one tile set per letter, coloured through palette banks (`SE_PALBANK`).
 
 ## Architecture
 
@@ -101,7 +81,7 @@ include/game_state.h state of one round (target, guesses, feedback, keyboard col
 include/stats.h      saved data layout
 ```
 
-Video memory: charblock 0 = font (+ title pattern), charblock 1 = cells and
+Video memory and display: charblock 0 = font (+ title pattern), charblock 1 = cells and
 keys; screenblocks 28/29/30. BG2 is a second text layer scrolled 4 px so
 that odd-length centred strings share the exact centre of even ones; it also
 carries the title pattern and the opaque modal box. The only sprite is the
@@ -148,4 +128,4 @@ Solutions are the 500 most frequent everyday words of each language (French:
 5-letter nouns, adjectives, verbs and adverbs after accent stripping), minus
 a short block list per language.
 
-Code © 2026 Clément Perreau, MIT licence (see `LICENSE`). Published by Khopa.
+© 2026 Khopa, MIT licence (see `LICENSE`)
