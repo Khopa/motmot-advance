@@ -93,8 +93,10 @@ local co = coroutine.create(function()
   shot("01_title")
   say("save.played at boot = " .. u16(SAVE + 6))
   press(K.START); wait(5)
+  shot("02_language")
+  press(K.A); wait(5)                         -- keep the saved language
   shot("02_menu")
-  press(K.DOWN); press(K.A); wait(5)          -- CLASSIC
+  press(K.A); wait(5)                         -- CLASSIC (preselected)
   local t = target()
   say("target = " .. t)
   shot("03_game")
@@ -117,7 +119,7 @@ local co = coroutine.create(function()
   shot("07_result")
   say("save.played = " .. u16(SAVE + 6) .. " won = " .. u16(SAVE + 8))
   press(K.B); wait(5)                         -- back to menu
-  press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- stats
+  press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CLASSIC -> STATS
   shot("08_stats")
   press(K.B); wait(5)
   press(K.RIGHT); wait(5)                     -- switch language -> EN
@@ -133,6 +135,27 @@ local co = coroutine.create(function()
   press(K.A); wait(5)                         -- re-enter the challenge
   say("challenge n_guesses after resume = " .. u8(GAME + 8))
   shot("11_challenge_resumed")
+
+  -- lose a classic game: too-short message, then six valid wrong words
+  press(K.SELECT); wait(5)
+  press(K.UP); press(K.A); wait(5)            -- menu item CHALLENGE -> CLASSIC
+  local lt = target()
+  local pool = ({ [0] = {"TERRE", "PORTE", "TABLE", "CHIEN", "ROUGE", "BLANC", "MONDE"},
+                  [1] = {"SLATE", "CRANE", "ABBEY", "ALLEY", "APPLE", "EERIE", "LEVEL"} })[u8(GAME)]
+  type_word("AB"); press(K.START); wait(3)
+  shot("12_too_short")
+  press(K.B); press(K.B)
+  local n = 0
+  for _, w in ipairs(pool) do
+    if n < 6 and w ~= lt then
+      type_word(w); press(K.START); wait(45); n = n + 1
+    end
+  end
+  say("lost: status = " .. u8(GAME + 2) .. " n_guesses = " .. u8(GAME + 8))
+  shot("13_lost")
+  press(K.A); wait(5)
+  shot("14_result_lost")
+  say("after loss: lost = " .. u16(SAVE + 10) .. " streak = " .. u16(SAVE + 12) .. " best = " .. u16(SAVE + 14))
   say("done")
 end)
 
@@ -176,17 +199,20 @@ def main():
         print(f"--- run {run} ---")
         print(log)
         boot = int(re.search(r"save.played at boot = (\d+)", log).group(1))
-        expect = run - 1
+        expect = run - 1                      # challenges/guesses carried over
+        boot_expect = 2 * (run - 1)           # each run plays one win + one loss
         checks = [
             ("no script error", "ERROR" not in log),
             ("script completed", "done" in log),
-            (f"stats persisted (played at boot = {expect})", boot == expect),
+            (f"stats persisted (played at boot = {boot_expect})", boot == boot_expect),
             ("decoy accepted", "n_guesses after decoy = 1" in log),
             ("game won in 2", "status = 1 n_guesses = 2" in log),
-            (f"stats updated (played = {run}, won = {run})", f"save.played = {run} won = {run}" in log),
+            (f"stats updated (played = {2 * run - 1}, won = {run})", f"save.played = {2 * run - 1} won = {run}" in log),
             (f"challenge restored from SRAM ({expect} guess)", f"n_guesses at entry = {expect}" in log),
             (f"challenge guess saved ({run})", f"after guess = {run}" in log),
             (f"challenge resumed after quit ({run})", f"after resume = {run}" in log),
+            ("game lost after 6 guesses", "lost: status = 2 n_guesses = 6" in log),
+            (f"loss recorded (lost = {run}, streak reset)", f"lost = {run} streak = 0 best = 1" in log),
         ]
         for name, ok in checks:
             print(("PASS " if ok else "FAIL ") + name)

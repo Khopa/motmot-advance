@@ -1,5 +1,5 @@
 // Wordle GBA — entry point and screen state machine:
-//   title -> menu -> game -> result -> menu ...
+//   title -> language -> menu -> game -> result -> menu ...
 #include <string.h>
 #include "common.h"
 #include "game_state.h"
@@ -11,7 +11,7 @@
 #include "rng.h"
 #include "stats.h"
 
-typedef enum { SCR_TITLE, SCR_MENU, SCR_GAME, SCR_RESULT, SCR_STATS } Screen;
+typedef enum { SCR_TITLE, SCR_LANG, SCR_MENU, SCR_GAME, SCR_RESULT, SCR_STATS } Screen;
 
 static GameState game;
 static KbCursor  kb;
@@ -57,13 +57,52 @@ static Screen title_screen(void)
     decor_show(true);
     draw_logo(5);
     txt_center(8, "GAME BOY ADVANCE", PAL_TXT_GRAY);
-    txt_center(18, "HOMEBREW - 2026", PAL_TXT_DIM);
+    txt_center(18, "KHOPA - 2026", PAL_TXT_GRAY);
 
     for (;;) {
         next_frame();
         if ((frames & 31) == 0) txt_center(13, L->press_start, PAL_TXT_WHITE);
         if ((frames & 31) == 20) txt_clear_row(13);
-        if (input_hit(KEY_START | KEY_A)) return SCR_MENU;
+        if (input_hit(KEY_START | KEY_A)) return SCR_LANG;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Language selection (also available later from the menu)
+// ---------------------------------------------------------------------------
+
+static void draw_lang_choice(void)
+{
+    static const int rows[LANG_COUNT] = { 9, 11 };
+    for (int i = 0; i < LANG_COUNT; i++) {
+        txt_puts(10, rows[i], "  ", PAL_TXT_WHITE);
+        txt_puts(12, rows[i], languages[i].name, i == menu_lang ? PAL_TXT_YELLOW : PAL_TXT_WHITE);
+    }
+    txt_puts(10, rows[menu_lang], ">", PAL_TXT_GREEN);
+}
+
+static Screen lang_screen(void)
+{
+    render_clear();
+    draw_logo(1);
+    txt_center(5, "CHOISIR LA LANGUE", PAL_TXT_GRAY);
+    txt_center(6, "CHOOSE LANGUAGE", PAL_TXT_GRAY);
+    txt_center(18, "A: OK", PAL_TXT_DIM);
+    draw_lang_choice();
+
+    for (;;) {
+        next_frame();
+        if (input_nav(KEY_UP) || input_nav(KEY_DOWN) || input_nav(KEY_LEFT) || input_nav(KEY_RIGHT)) {
+            menu_lang = (menu_lang + 1) % LANG_COUNT;   // two languages: any direction toggles
+            draw_lang_choice();
+        }
+        if (input_hit(KEY_A | KEY_START)) {
+            save.lang = menu_lang;
+            stats_save();
+            menu_item = MENU_CLASSIC;
+            return SCR_MENU;
+        }
+        if (input_hit(KEY_B)) return SCR_TITLE;
     }
 }
 
@@ -425,6 +464,7 @@ int main(void)
     for (;;) {
         switch (scr) {
         case SCR_TITLE:  scr = title_screen();  break;
+        case SCR_LANG:   scr = lang_screen();   break;
         case SCR_MENU:   scr = menu_screen();   break;
         case SCR_GAME:   scr = game_screen();   break;
         case SCR_RESULT: scr = result_screen(); break;
