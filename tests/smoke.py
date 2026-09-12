@@ -7,7 +7,7 @@ win is recorded, visits the result and statistics screens, and takes a
 screenshot at every step into tests/out/. A second run checks that the
 statistics survived in SRAM.
 
-usage: smoke.py [--mgba PATH] [--rom build/wordle.gba]
+usage: smoke.py [--mgba PATH] [--rom build/khopamotus.gba]
 Needs an mGBA build with the --script option (0.11 dev or later).
 """
 import argparse
@@ -37,7 +37,7 @@ LUA = r"""
 local ROM_OUT = "%(out)s"
 local GAME = %(game)d      -- GameState: lang(0) mode(1) status(2) target(3..7) n_guesses(8)
 local KB   = %(kb)d        -- KbCursor: row, col
-local SAVE = %(save)d      -- SaveData: magic(0..3) version(4) lang(5) played(6..7) won(8..9)
+local SAVE = %(save)d      -- SaveData: magic(0..3) version(4) lang(5) sound(6) played(8..9) won(10..11) lost(12..13) streak(14..15) best(16..17)
 local RUN  = %(run)d
 
 local log = io.open(ROM_OUT .. "/smoke" .. RUN .. ".log", "w")
@@ -49,6 +49,7 @@ local layouts = {
   [1] = {"QWERTYUIOP", "ASDFGHJKL",  "\1ZXCVBNM\2"},  -- EN
 }
 
+local snd_reset, snd_poll, snd
 local co = coroutine.create(function()
   local function wait(n) for _ = 1, n do coroutine.yield() end end
   local function press(key, hold)
@@ -91,7 +92,7 @@ local co = coroutine.create(function()
 
   wait(30)
   shot("00_language")
-  say("save.played at boot = " .. u16(SAVE + 6))
+  say("save.played at boot = " .. u16(SAVE + 8))
   press(K.A); wait(5)                         -- keep the saved language
   shot("01_title")
   press(K.START); wait(5)
@@ -101,7 +102,13 @@ local co = coroutine.create(function()
   say("target = " .. t)
   shot("03_game")
 
-  type_word("AAAAA"); press(K.START); wait(5)  -- not in list
+  say("sound enabled = " .. (emu:read16(0x04000084) >> 7 & 1))
+  snd_reset()
+  type_word("AAAAA")
+  say("sound while typing: sq1 = " .. snd.sq1 .. " noise = " .. snd.noise)
+  snd_reset()
+  press(K.START); wait(5)                     -- not in list -> buzzer
+  say("sound on error: sq1 = " .. snd.sq1 .. " noise = " .. snd.noise)
   shot("04_unknown_word")
   for _ = 1, 5 do press(K.B) end
 
@@ -117,14 +124,15 @@ local co = coroutine.create(function()
   shot("06_won")
   press(K.A); wait(5)
   shot("07_result")
-  say("save.played = " .. u16(SAVE + 6) .. " won = " .. u16(SAVE + 8))
+  say("save.played = " .. u16(SAVE + 8) .. " won = " .. u16(SAVE + 10))
   press(K.B); wait(5)                         -- back to menu
   press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CLASSIC -> STATS
   shot("08_stats")
   press(K.B); wait(5)
-  press(K.RIGHT); wait(5)                     -- switch language -> EN
+  press(K.UP); press(K.UP); press(K.UP)       -- STATS -> LANGUAGE
+  press(K.RIGHT); wait(5)                     -- switch language
   shot("09_menu_en")
-  press(K.UP); press(K.A); wait(5)            -- CHALLENGE (English: started there in run 1)
+  press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CHALLENGE (English: started there in run 1)
   say("challenge lang = " .. u8(GAME) .. " mode = " .. u8(GAME + 1) .. " n_guesses at entry = " .. u8(GAME + 8))
   shot("10_challenge_en")
   local ct = target()
@@ -155,11 +163,22 @@ local co = coroutine.create(function()
   shot("13_lost")
   press(K.A); wait(5)
   shot("14_result_lost")
-  say("after loss: lost = " .. u16(SAVE + 10) .. " streak = " .. u16(SAVE + 12) .. " best = " .. u16(SAVE + 14))
+  say("after loss: lost = " .. u16(SAVE + 12) .. " streak = " .. u16(SAVE + 14) .. " best = " .. u16(SAVE + 16))
   say("done")
 end)
 
+-- sound monitor: highest envelope volume seen on square 1 / noise since reset
+snd = { sq1 = 0, noise = 0 }
+snd_reset = function() snd.sq1 = 0; snd.noise = 0 end
+snd_poll = function()
+  local v1 = emu:read16(0x04000062) >> 12      -- SOUND1CNT_H envelope volume
+  local v4 = emu:read16(0x04000078) >> 12      -- SOUND4CNT_L envelope volume
+  if v1 > snd.sq1 then snd.sq1 = v1 end
+  if v4 > snd.noise then snd.noise = v4 end
+end
+
 callbacks:add("frame", function()
+  snd_poll()
   if coroutine.status(co) ~= "dead" then
     local ok, err = coroutine.resume(co)
     if not ok then say("ERROR " .. tostring(err)); os.exit(1) end
@@ -173,7 +192,7 @@ end)
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mgba", default="C:/Tools/mgba-nightly/mGBA.exe")
-    ap.add_argument("--rom", default=os.path.join(ROOT, "build", "wordle.gba"))
+    ap.add_argument("--rom", default=os.path.join(ROOT, "build", "khopamotus.gba"))
     ap.add_argument("--keep-save", action="store_true", help="do not delete the .sav first")
     a = ap.parse_args()
 
@@ -206,6 +225,9 @@ def main():
             ("script completed", "done" in log),
             (f"stats persisted (played at boot = {boot_expect})", boot == boot_expect),
             ("decoy accepted", "n_guesses after decoy = 1" in log),
+            ("sound master enable", "sound enabled = 1" in log),
+            ("key click plays on square 1", re.search(r"sound while typing: sq1 = [1-9]\d* noise = 0", log) is not None),
+            ("buzzer uses square 1 and noise", re.search(r"sound on error: sq1 = [1-9]\d* noise = [1-9]", log) is not None),
             ("game won in 2", "status = 1 n_guesses = 2" in log),
             (f"stats updated (played = {2 * run - 1}, won = {run})", f"save.played = {2 * run - 1} won = {run}" in log),
             (f"challenge restored from SRAM ({expect} guess)", f"n_guesses at entry = {expect}" in log),

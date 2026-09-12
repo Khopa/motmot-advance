@@ -28,6 +28,9 @@ typedef struct {
     const char *menu_classic;
     const char *menu_challenge;
     const char *menu_stats;
+    const char *menu_sound;
+    const char *on;
+    const char *off;
     const char *menu_help;
     const char *mode_classic;
     const char *mode_challenge;         // printf-style with the challenge number

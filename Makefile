@@ -1,12 +1,12 @@
-# Wordle GBA — Makefile
+# KhopaMotus — Makefile
 # Build from an MSYS2 shell with devkitPro installed (DEVKITPRO=/opt/devkitpro):
-#     make            -> build/wordle.gba
+#     make            -> build/khopamotus.gba
 #     make run        -> launch in mGBA
 #     make test       -> host-side unit tests of the game logic
 #     make smoke      -> end-to-end test in mGBA (needs a build with --script)
 #     make clean
 
-TARGET   := wordle
+TARGET   := khopamotus
 BUILD    := build
 GEN      := $(BUILD)/gen
 
@@ -20,8 +20,8 @@ MGBA     ?= /c/Program\ Files/mGBA/mGBA.exe
 PYTHON   ?= python
 HOSTCC   ?= gcc
 
-GAME_TITLE := WORDLE
-GAME_CODE  := WRDL
+GAME_TITLE := KHOPAMOTUS
+GAME_CODE  := KMOT
 
 ARCH     := -mthumb -mthumb-interwork
 CFLAGS   := -g -Wall -Wextra -O2 -mcpu=arm7tdmi -mtune=arm7tdmi $(ARCH) \

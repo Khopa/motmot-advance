@@ -4,15 +4,19 @@ word lists. Run manually when you want to refresh the lists; the outputs are
 committed so a normal build needs no network access.
 
 Sources (downloaded into a cache directory):
-  EN  original Wordle answer list + allowed guesses (cfreshman gists)
+  EN  an-array-of-english-words (MIT) as the dictionary
       OpenSubtitles word frequencies (hermitdave/FrequencyWords, CC-BY-SA)
+      google-10000-english (Google Trillion Word corpus, "no swears" list)
+      random-name first names list, used to exclude first names
   FR  Lexique 3.83 (lexique.org, CC BY-SA 4.0): forms, lemmas, POS, frequency
       an-array-of-french-words (MIT) for extra valid forms
 
-Solutions: the N most frequent "common" words (EN: Wordle answers ranked by
-subtitle frequency; FR: Lexique lemmas that are nouns/adjectives/verbs/adverbs
-ranked by film+book lemma frequency), minus a small block list.
-Valid words: every 5-letter a-z form (accents stripped) from all sources.
+Solutions: the N most frequent "common" words (EN: dictionary words present
+in both the subtitle and the web top lists, ranked by subtitle frequency,
+first names removed; FR: Lexique lemmas that are nouns/adjectives/verbs/
+adverbs ranked by film+book lemma frequency), minus a small block list.
+Valid words: every 5-letter a-z form (accents stripped) known to the
+dictionaries (EN: with at least a few subtitle occurrences).
 
 usage: build_wordlists.py [--cache DIR] [--count 500]
 """
@@ -31,20 +35,28 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
 
 URLS = {
-    "wordle-answers.txt": "https://gist.githubusercontent.com/cfreshman/a03ef2cba789d8cf00c08f767e0fad7b/raw/wordle-answers-alphabetical.txt",
-    "wordle-guesses.txt": "https://gist.githubusercontent.com/cfreshman/cdcdf777450c5b5301e439061d29694c/raw/wordle-allowed-guesses.txt",
-    "en_50k.txt": "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_50k.txt",
+    "english-words.json": "https://raw.githubusercontent.com/words/an-array-of-english-words/master/index.json",
+    "en_full.txt": "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_full.txt",
+    "google-10000.txt": "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt",
+    "first-names.txt": "https://raw.githubusercontent.com/dominictarr/random-name/master/first-names.txt",
     "Lexique383.zip": "http://www.lexique.org/databases/Lexique383/Lexique383.zip",
     "french-words.json": "https://raw.githubusercontent.com/words/an-array-of-french-words/master/index.json",
 }
 
-# Words we do not want as solutions (slurs, vulgarity, proper nouns that
-# slipped through). They stay accepted as guesses.
-BLOCK_EN = set()
+# Words we do not want as solutions (slurs, vulgarity, proper nouns and
+# subtitle contractions that slipped through). They stay accepted as guesses.
+BLOCK_EN = set("""
+jesus peter james henry harry jimmy roger smith chuck louis jones mason lewis
+tyler oscar ralph paris china india japan vegas texas spain
+gonna wanna gotta haven kinda lemme dunno
+""".split())
 BLOCK_FR = set("""
 merde negre negro boche garce sucer pisse chier foutu foutre putes salop
 jesus jenny harry bougre conne cocue enfoire nazie nazis pute bite
 """.split())
+
+# minimum subtitle occurrences for an English dictionary word to be accepted
+EN_MIN_FREQ = 3
 
 FIVE = re.compile(r"^[a-z]{5}$")
 
@@ -74,19 +86,22 @@ def read_lines(path):
 
 
 def build_en(cache, count):
-    answers = [w for w in (norm(x) for x in read_lines(fetch(cache, "wordle-answers.txt"))) if w]
-    guesses = [w for w in (norm(x) for x in read_lines(fetch(cache, "wordle-guesses.txt"))) if w]
+    with open(fetch(cache, "english-words.json"), encoding="utf-8") as f:
+        dictionary = {w for w in (norm(x) for x in json.load(f)) if w}
     freq = {}
-    for line in read_lines(fetch(cache, "en_50k.txt")):
+    for line in read_lines(fetch(cache, "en_full.txt")):
         w, n = line.split()
         w = norm(w)
         if w and w not in freq:
             freq[w] = int(n)
-    answer_set = set(answers)
-    ranked = sorted((w for w in answer_set if w not in BLOCK_EN), key=lambda w: -freq.get(w, 0))
-    solutions = ranked[:count]
-    valid = sorted(answer_set | set(guesses))
-    return solutions, valid
+    web_top = {w for w in (norm(x) for x in read_lines(fetch(cache, "google-10000.txt"))) if w}
+    with open(fetch(cache, "first-names.txt"), encoding="utf-8", errors="ignore") as f:
+        names = {w for w in (norm(x) for x in f) if w}
+
+    valid = {w for w in dictionary if freq.get(w, 0) >= EN_MIN_FREQ}
+    candidates = (w for w in valid if w in web_top and w not in names and w not in BLOCK_EN)
+    solutions = sorted(candidates, key=lambda w: -freq[w])[:count]
+    return solutions, sorted(valid)
 
 
 def build_fr(cache, count):

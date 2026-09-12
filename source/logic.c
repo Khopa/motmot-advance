@@ -1,4 +1,4 @@
-// Platform-independent Wordle rules.
+// Platform-independent game rules: score a guess, validate, type a row.
 #include <string.h>
 #include "logic.h"
 

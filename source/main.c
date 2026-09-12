@@ -1,4 +1,4 @@
-// Wordle GBA — entry point and screen state machine:
+// KhopaMotus — entry point and screen state machine:
 //   language (once, at boot) -> title -> menu -> game -> result -> menu ...
 #include <string.h>
 #include "common.h"
@@ -9,6 +9,7 @@
 #include "logic.h"
 #include "render.h"
 #include "rng.h"
+#include "sound.h"
 #include "stats.h"
 
 typedef enum { SCR_TITLE, SCR_LANG, SCR_MENU, SCR_GAME, SCR_RESULT, SCR_STATS } Screen;
@@ -20,7 +21,7 @@ static u8        menu_lang;         // language shown/selected in the menu
 static int       menu_item;
 static bool      challenge_resumed;
 
-enum { MENU_LANG, MENU_CLASSIC, MENU_CHALLENGE, MENU_STATS, MENU_COUNT };
+enum { MENU_LANG, MENU_CLASSIC, MENU_CHALLENGE, MENU_STATS, MENU_SOUND, MENU_COUNT };
 
 #define LANG() (&languages[game.lang])
 
@@ -28,6 +29,7 @@ static void next_frame(void)
 {
     VBlankIntrWait();
     render_vblank();
+    sound_update();
     input_poll();
     frames++;
 }
@@ -43,11 +45,11 @@ static void wait_frames(int n)
 
 static void draw_logo(int ty)
 {
-    static const char logo[] = "WORDLE";
-    static const u8 pals[] = { PAL_CORRECT, PAL_PRESENT, PAL_ABSENT,
-                               PAL_CORRECT, PAL_PRESENT, PAL_CORRECT };
-    for (int i = 0; i < 6; i++)
-        cell_draw(9 + i * 2, ty, logo[i], pals[i]);
+    static const char logo[] = "KHOPAMOTUS";
+    static const u8 pals[] = { PAL_ABSENT, PAL_ABSENT, PAL_ABSENT, PAL_ABSENT, PAL_ABSENT,
+                               PAL_CORRECT, PAL_PRESENT, PAL_CORRECT, PAL_PRESENT, PAL_CORRECT };
+    for (int i = 0; i < 10; i++)
+        cell_draw(5 + i * 2, ty, logo[i], pals[i]);
 }
 
 static Screen title_screen(void)
@@ -63,7 +65,7 @@ static Screen title_screen(void)
         next_frame();
         if ((frames & 31) == 0) txt_center(13, L->press_start, PAL_TXT_WHITE);
         if ((frames & 31) == 20) txt_clear_row(13);
-        if (input_hit(KEY_START | KEY_A)) return SCR_MENU;
+        if (input_hit(KEY_START | KEY_A)) { sfx_play(SFX_SELECT); return SCR_MENU; }
     }
 }
 
@@ -94,11 +96,13 @@ static Screen lang_screen(void)
         next_frame();
         if (input_nav(KEY_UP) || input_nav(KEY_DOWN) || input_nav(KEY_LEFT) || input_nav(KEY_RIGHT)) {
             menu_lang = (menu_lang + 1) % LANG_COUNT;   // two languages: any direction toggles
+            sfx_play(SFX_MOVE);
             draw_lang_choice();
         }
         if (input_hit(KEY_A | KEY_START)) {
             save.lang = menu_lang;
             stats_save();
+            sfx_play(SFX_SELECT);
             menu_item = MENU_CLASSIC;
             return SCR_TITLE;
         }
@@ -112,7 +116,7 @@ static Screen lang_screen(void)
 static void draw_menu(void)
 {
     const Language *L = &languages[menu_lang];
-    static const int rows[MENU_COUNT] = { 5, 8, 10, 12 };
+    static const int rows[MENU_COUNT] = { 5, 8, 10, 12, 14 };
 
     txt_clear();
     cells_clear();
@@ -137,6 +141,12 @@ static void draw_menu(void)
     }
 
     txt_puts(5, rows[MENU_STATS], L->menu_stats, PAL_TXT_WHITE);
+
+    txt_puts(5, rows[MENU_SOUND], L->menu_sound, PAL_TXT_WHITE);
+    txt_puts(16, rows[MENU_SOUND], "<", PAL_TXT_GRAY);
+    txt_puts(18, rows[MENU_SOUND], save.sound_on ? L->on : L->off, PAL_TXT_YELLOW);
+    txt_puts(27, rows[MENU_SOUND], ">", PAL_TXT_GRAY);
+
     txt_center(18, L->menu_help, PAL_TXT_DIM);
 
     txt_puts(3, rows[menu_item], ">", PAL_TXT_GREEN);
@@ -153,20 +163,29 @@ static Screen menu_screen(void)
 
         if (input_nav(KEY_UP))   { menu_item = (menu_item + MENU_COUNT - 1) % MENU_COUNT; dirty = true; }
         if (input_nav(KEY_DOWN)) { menu_item = (menu_item + 1) % MENU_COUNT; dirty = true; }
+        if (dirty) sfx_play(SFX_MOVE);
 
-        bool toggle = input_hit(KEY_LEFT | KEY_RIGHT) || (menu_item == MENU_LANG && input_hit(KEY_A));
-        if (toggle) {
+        // left/right (or A) change the value of the highlighted option
+        bool toggle = input_hit(KEY_LEFT | KEY_RIGHT) || input_hit(KEY_A);
+        if (toggle && menu_item == MENU_LANG) {
             menu_lang = (menu_lang + 1) % LANG_COUNT;
             save.lang = menu_lang;
             stats_save();
+            sfx_play(SFX_MOVE);
+            dirty = true;
+        } else if (toggle && menu_item == MENU_SOUND) {
+            save.sound_on = !save.sound_on;
+            sound_set_enabled(save.sound_on);
+            stats_save();
+            sfx_play(SFX_SELECT);
             dirty = true;
         }
 
         if (input_hit(KEY_A) || input_hit(KEY_START)) {
             switch (menu_item) {
-            case MENU_CLASSIC:   game.mode = MODE_CLASSIC;   return SCR_GAME;
-            case MENU_CHALLENGE: game.mode = MODE_CHALLENGE; return SCR_GAME;
-            case MENU_STATS:     return SCR_STATS;
+            case MENU_CLASSIC:   sfx_play(SFX_SELECT); game.mode = MODE_CLASSIC;   return SCR_GAME;
+            case MENU_CHALLENGE: sfx_play(SFX_SELECT); game.mode = MODE_CHALLENGE; return SCR_GAME;
+            case MENU_STATS:     sfx_play(SFX_SELECT); return SCR_STATS;
             default: break;
             }
         }
@@ -248,8 +267,10 @@ static void update_cursor(void)
 // Colour the freshly committed row cell by cell.
 static void reveal_row(int row)
 {
+    static const SfxId reveal_sfx[] = { SFX_ABSENT, SFX_ABSENT, SFX_PRESENT, SFX_CORRECT };
     for (int c = 1; c <= WORD_LEN; c++) {
         render_grid_row(&game, row, c);
+        sfx_play(reveal_sfx[game.feedback[row][c - 1]]);
         wait_frames(6);
     }
 }
@@ -268,8 +289,10 @@ static void finish_game(void)
     stats_save();
 
     if (won) {
+        sfx_play(SFX_WIN);
         show_message(L->win_msgs[game.n_guesses - 1], PAL_TXT_GREEN);
     } else {
+        sfx_play(SFX_LOSE);
         char buf[32];
         int n = strlen(L->lose_msg);
         memcpy(buf, L->lose_msg, n);
@@ -331,11 +354,17 @@ static Screen game_screen(void)
         if (!key) continue;
 
         if (key == KEY_DEL) {
-            if (game_backspace(&game)) render_grid_row(&game, game.n_guesses, 0);
+            if (game_backspace(&game)) {
+                render_grid_row(&game, game.n_guesses, 0);
+                sfx_play(SFX_DELETE);
+            }
             continue;
         }
         if (key != KEY_ENTER) {
-            if (game_type_letter(&game, key)) render_grid_row(&game, game.n_guesses, 0);
+            if (game_type_letter(&game, key)) {
+                render_grid_row(&game, game.n_guesses, 0);
+                sfx_play(SFX_KEY);
+            }
             continue;
         }
 
@@ -343,10 +372,12 @@ static Screen game_screen(void)
         switch (res) {
         case SUBMIT_TOO_SHORT:
             show_message(L->msg_too_short, PAL_TXT_WHITE);
+            sfx_play(SFX_ERROR);
             msg_timer = 90;
             break;
         case SUBMIT_NOT_IN_LIST:
             show_message(L->msg_not_in_list, PAL_TXT_WHITE);
+            sfx_play(SFX_ERROR);
             msg_timer = 90;
             break;
         default: {
@@ -443,8 +474,8 @@ static Screen result_screen(void)
 
     for (;;) {
         next_frame();
-        if (input_hit(KEY_A | KEY_START)) return SCR_GAME;    // same mode again
-        if (input_hit(KEY_B)) return SCR_MENU;
+        if (input_hit(KEY_A | KEY_START)) { sfx_play(SFX_SELECT); return SCR_GAME; }   // same mode again
+        if (input_hit(KEY_B)) { sfx_play(SFX_SELECT); return SCR_MENU; }
     }
 }
 
@@ -458,6 +489,8 @@ int main(void)
     stats_load();
     menu_lang = save.lang;
     render_init();
+    sound_init();
+    sound_set_enabled(save.sound_on);
 
     Screen scr = SCR_LANG;
     for (;;) {

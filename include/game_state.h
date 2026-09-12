@@ -1,4 +1,4 @@
-// State of one Wordle round: target word, committed guesses and their
+// State of one round: target word, committed guesses and their
 // feedback, the row being typed, and the per-letter keyboard colours.
 #ifndef GAME_STATE_H
 #define GAME_STATE_H

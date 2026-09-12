@@ -54,7 +54,7 @@ def main():
     # Deterministic shuffle: the Challenge sequence must be identical in every
     # build so that challenge #n is the same word for everyone.
     seq = list(range(len(solutions)))
-    random.Random(f"wordle-gba-{a.lang}").shuffle(seq)
+    random.Random(f"khopamotus-{a.lang}").shuffle(seq)
 
     L = a.lang
     with open(a.out + ".h", "w", newline="\n") as f:

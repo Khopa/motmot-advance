@@ -11,6 +11,7 @@ typedef struct {
     u32  magic;
     u8   version;
     u8   lang;                              // last language chosen in the menu
+    u8   sound_on;                          // sound effects toggle
     u16  played;
     u16  won;
     u16  lost;

@@ -5,8 +5,8 @@
 #include <string.h>
 #include "stats.h"
 
-#define SAVE_MAGIC   0x4C445257u   // "WRDL"
-#define SAVE_VERSION 1
+#define SAVE_MAGIC   0x544F4D4Bu   // "KMOT"
+#define SAVE_VERSION 2
 
 // Tells emulators and flash carts which backup type the ROM expects.
 const char save_type_id[] __attribute__((aligned(4), used)) = "SRAM_V113";
@@ -44,6 +44,7 @@ static void defaults(void)
     save.magic = SAVE_MAGIC;
     save.version = SAVE_VERSION;
     save.lang = LANG_FR;
+    save.sound_on = 1;
     save.rng_state = 0x2545F491u;
 }
 

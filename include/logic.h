@@ -1,4 +1,4 @@
-// Platform-independent Wordle rules (no hardware access; host-testable).
+// Platform-independent game rules (no hardware access; host-testable).
 #ifndef LOGIC_H
 #define LOGIC_H
 
@@ -14,7 +14,7 @@ typedef enum {
     SUBMIT_NOT_IN_LIST,
 } SubmitResult;
 
-// Colour a guess against the target (handles repeated letters like Wordle).
+// Colour a guess against the target (repeated letters are matched at most once).
 void logic_score(const char guess[WORD_LEN], const char target[WORD_LEN], u8 out[WORD_LEN]);
 
 // Binary search in a sorted list of 5-letter upper-case words.

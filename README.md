@@ -1,11 +1,12 @@
-# Wordle GBA
+# KhopaMotus
 
 *Version française : [README.fr.md](README.fr.md)*
 
-A Wordle port for the Game Boy Advance: guess a 5-letter word in 6 tries with
-green / yellow / grey feedback, a D-pad driven virtual keyboard, two languages
-(French and English), statistics saved to SRAM and a deterministic Challenge
-mode. Written in C with libtonc — no assembly, no C++.
+A word-guessing game for the Game Boy Advance in the spirit of the TV show
+*Motus*: find a 5-letter word in 6 tries with green / yellow / grey feedback
+on every letter, a D-pad driven virtual keyboard, two languages (French and
+English), chiptune sound effects, statistics saved to SRAM and a
+deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
 
 | Title | Language | Menu | Game | Result |
 |---|---|---|---|---|
@@ -13,16 +14,20 @@ mode. Written in C with libtonc — no assembly, no C++.
 
 ## Features
 
-- Language selection at boot, title screen, menu (mode, statistics, language).
+- Language selection at boot, title screen, menu (mode, statistics, language,
+  sound).
 - **Classic mode**: a random word among ~500 common words, never repeating
   the last 8 words played.
 - **Challenge mode**: challenge #*n* is always the same word (an embedded
   pre-shuffled sequence indexed by the number of completed challenges stored
   in SRAM — no clock needed). Only one Challenge can be in progress: it is
   saved after every guess and resumed if you quit (SELECT) or power off.
-- Guesses are validated against a large list (~13,000 English words,
-  ~6,600 French words; accents are stripped as in French Wordle clones).
+- Guesses are validated against a large list (~8,700 English words,
+  ~6,600 French words; accents are stripped, as in the TV show).
 - AZERTY layout in French, QWERTY in English, with Enter / Backspace keys.
+- Sound effects on the Game Boy tone generators: key clicks, buzzer on an
+  unknown word, a different note for each revealed colour, win fanfare, loss
+  jingle. Can be switched off in the menu (saved).
 - Persistent statistics (SRAM): games played, wins, current streak, best
   streak, guess distribution, challenges won.
 - The whole interface is translated into the selected language.
@@ -36,7 +41,7 @@ mode. Written in C with libtonc — no assembly, no C++.
 | B | Delete the last letter |
 | START | Submit the word |
 | SELECT | Quit the game and return to the menu |
-| Left / Right (menu) | Switch language |
+| Left / Right (menu) | Change the highlighted option (language, sound) |
 
 ## Building
 
@@ -45,7 +50,7 @@ Requirements: [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the
 [Pillow](https://pypi.org/project/pillow/) (tile generation).
 
 ```sh
-make            # -> build/wordle.gba
+make            # -> build/khopamotus.gba
 make run        # launch the ROM in mGBA (override the path with MGBA=...)
 make test       # unit tests of the game logic, built with the host gcc
 make smoke      # end-to-end test in mGBA (see below)
@@ -77,12 +82,13 @@ is one tile set per letter, coloured through palette banks (`SE_PALBANK`).
 
 ```
 source/main.c        game loop, screen state machine: language / title / menu / game / result / stats
-source/logic.c       Wordle rules (scoring with repeated letters, validation, typing) — no hardware dependency
+source/logic.c       game rules (scoring with repeated letters, validation, typing) — no hardware dependency
 source/lang.c        language table: word lists, keyboard layout, UI strings
 source/render.c      Mode 0: BG0 text, BG1 grid + keyboard, BG2 title pattern, cursor sprite
+source/sound.c       PSG sound effects: step sequencer on square 1, square 2 and noise
 source/keyboard.c    cursor navigation over the virtual keyboard
 source/input.c       key polling, D-pad auto-repeat
-source/stats.c       SRAM read / write (statistics, in-progress challenge, RNG state)
+source/stats.c       SRAM read / write (statistics, in-progress challenge, RNG state, options)
 source/rng.c         xorshift32
 include/game_state.h state of one round (target, guesses, feedback, keyboard colours)
 include/stats.h      saved data layout
@@ -101,20 +107,25 @@ charblock 2 = pattern; screenblocks 28/29/30; the only sprite is the cursor.
   development builds; use `--mgba` to point at it). The script reads the game
   state from RAM (addresses taken from the ELF), types words on the virtual
   keyboard, wins a game, loses a game, checks the statistics, quits and
-  resumes a Challenge, then reboots the ROM to verify SRAM persistence.
-  Screenshots land in `tests/out/`.
+  resumes a Challenge, watches the sound registers, then reboots the ROM to
+  verify SRAM persistence. Screenshots land in `tests/out/`.
 
 ## Word list sources
 
-- English: the original Wordle solution and allowed-guess lists; frequency
-  ranking from [FrequencyWords](https://github.com/hermitdave/FrequencyWords)
-  (CC BY-SA 4.0).
+- English: [an-array-of-english-words](https://github.com/words/an-array-of-english-words)
+  (MIT) as the dictionary; frequency ranking from
+  [FrequencyWords](https://github.com/hermitdave/FrequencyWords)
+  (OpenSubtitles, CC BY-SA 4.0); the
+  [google-10000-english](https://github.com/first20hours/google-10000-english)
+  list to keep only everyday words as solutions; a first-names list to drop
+  proper nouns.
 - French: [Lexique 3.83](http://www.lexique.org) (CC BY-SA 4.0) for forms,
   lemmas, part of speech and frequencies;
   [an-array-of-french-words](https://github.com/words/an-array-of-french-words)
   (MIT) to widen the accepted-word list.
 
-Solutions are the 500 most frequent lemmas (5-letter nouns, adjectives,
-verbs and adverbs after accent stripping), minus a short block list.
+Solutions are the 500 most frequent everyday words (French: 5-letter nouns,
+adjectives, verbs and adverbs after accent stripping), minus a short block
+list.
 
 Code © 2026 Clément Perreau, MIT licence (see `LICENSE`). Published by Khopa.
