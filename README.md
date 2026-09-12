@@ -13,7 +13,7 @@ mode. Written in C with libtonc — no assembly, no C++.
 
 ## Features
 
-- Title screen, language selection, menu (mode, statistics, language).
+- Language selection at boot, title screen, menu (mode, statistics, language).
 - **Classic mode**: a random word among ~500 common words, never repeating
   the last 8 words played.
 - **Challenge mode**: challenge #*n* is always the same word (an embedded
@@ -76,7 +76,7 @@ is one tile set per letter, coloured through palette banks (`SE_PALBANK`).
 ## Architecture
 
 ```
-source/main.c        game loop, screen state machine: title / language / menu / game / result / stats
+source/main.c        game loop, screen state machine: language / title / menu / game / result / stats
 source/logic.c       Wordle rules (scoring with repeated letters, validation, typing) — no hardware dependency
 source/lang.c        language table: word lists, keyboard layout, UI strings
 source/render.c      Mode 0: BG0 text, BG1 grid + keyboard, BG2 title pattern, cursor sprite

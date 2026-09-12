@@ -13,7 +13,7 @@ déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
 
 ## Fonctionnalités
 
-- Écran titre, choix de la langue, menu (mode, statistiques, langue).
+- Choix de la langue au démarrage, écran titre, menu (mode, statistiques, langue).
 - **Mode Classique** : mot tiré au hasard parmi ~500 mots courants, sans
   répéter les 8 derniers mots joués.
 - **Mode Challenge** : le challenge n° *n* est toujours le même mot (séquence
@@ -77,7 +77,7 @@ seule tuile par lettre, colorée par bank de palette (`SE_PALBANK`).
 ## Architecture
 
 ```
-source/main.c        boucle de jeu, machine à états : titre / langue / menu / jeu / résultat / stats
+source/main.c        boucle de jeu, machine à états : langue / titre / menu / jeu / résultat / stats
 source/logic.c       règles de Wordle (score avec lettres répétées, validation, saisie) — sans dépendance matérielle
 source/lang.c        table des langues : listes de mots, disposition clavier, textes
 source/render.c      Mode 0 : BG0 texte, BG1 grille + clavier, BG2 motif titre, sprite curseur

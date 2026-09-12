@@ -1,5 +1,5 @@
 // Wordle GBA — entry point and screen state machine:
-//   title -> language -> menu -> game -> result -> menu ...
+//   language (once, at boot) -> title -> menu -> game -> result -> menu ...
 #include <string.h>
 #include "common.h"
 #include "game_state.h"
@@ -63,12 +63,12 @@ static Screen title_screen(void)
         next_frame();
         if ((frames & 31) == 0) txt_center(13, L->press_start, PAL_TXT_WHITE);
         if ((frames & 31) == 20) txt_clear_row(13);
-        if (input_hit(KEY_START | KEY_A)) return SCR_LANG;
+        if (input_hit(KEY_START | KEY_A)) return SCR_MENU;
     }
 }
 
 // ---------------------------------------------------------------------------
-// Language selection (also available later from the menu)
+// Language selection: shown once at boot (still changeable from the menu)
 // ---------------------------------------------------------------------------
 
 static void draw_lang_choice(void)
@@ -100,9 +100,8 @@ static Screen lang_screen(void)
             save.lang = menu_lang;
             stats_save();
             menu_item = MENU_CLASSIC;
-            return SCR_MENU;
+            return SCR_TITLE;
         }
-        if (input_hit(KEY_B)) return SCR_TITLE;
     }
 }
 
@@ -460,7 +459,7 @@ int main(void)
     menu_lang = save.lang;
     render_init();
 
-    Screen scr = SCR_TITLE;
+    Screen scr = SCR_LANG;
     for (;;) {
         switch (scr) {
         case SCR_TITLE:  scr = title_screen();  break;

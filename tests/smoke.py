@@ -90,11 +90,11 @@ local co = coroutine.create(function()
   end
 
   wait(30)
-  shot("01_title")
+  shot("00_language")
   say("save.played at boot = " .. u16(SAVE + 6))
-  press(K.START); wait(5)
-  shot("02_language")
   press(K.A); wait(5)                         -- keep the saved language
+  shot("01_title")
+  press(K.START); wait(5)
   shot("02_menu")
   press(K.A); wait(5)                         -- CLASSIC (preselected)
   local t = target()
