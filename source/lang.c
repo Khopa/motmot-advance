@@ -37,7 +37,7 @@ const Language languages[LANG_COUNT] = {
         .stats_back         = "B: RETOUR",
         .result_prompt      = "A: REJOUER   B: MENU",
         .challenge_resumed  = "CHALLENGE REPRIS",
-        .game_help          = "A: LETTRE  B: EFFACER  START: OK",
+        .game_help          = "A:LETTRE B:EFFACER START:OK",
     },
     [LANG_EN] = {
         .name          = "ENGLISH",
@@ -63,7 +63,7 @@ const Language languages[LANG_COUNT] = {
         .lose_msg           = "THE WORD WAS ",
         .stats_title        = "STATISTICS",
         .stats_played       = "PLAYED",
-        .stats_win_rate     = "WIN %",
+        .stats_win_rate     = "WINS",
         .stats_streak       = "STREAK",
         .stats_max_streak   = "BEST",
         .stats_distribution = "GUESS DISTRIBUTION",
@@ -71,6 +71,6 @@ const Language languages[LANG_COUNT] = {
         .stats_back         = "B: BACK",
         .result_prompt      = "A: PLAY AGAIN   B: MENU",
         .challenge_resumed  = "CHALLENGE RESUMED",
-        .game_help          = "A: LETTER  B: DELETE  START: ENTER",
+        .game_help          = "A:LETTER B:DELETE START:ENTER",
     },
 };

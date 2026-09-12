@@ -3,6 +3,7 @@
 #     make            -> build/wordle.gba
 #     make run        -> launch in mGBA
 #     make test       -> host-side unit tests of the game logic
+#     make smoke      -> end-to-end test in mGBA (needs a build with --script)
 #     make clean
 
 TARGET   := wordle
@@ -45,7 +46,7 @@ SRCS := $(wildcard source/*.c)
 OBJS := $(patsubst source/%.c,$(BUILD)/%.o,$(SRCS)) \
         $(patsubst $(GEN)/%.c,$(BUILD)/%.o,$(GFX_SRCS) $(WL_SRCS))
 
-.PHONY: all clean run gen assets wordlists test
+.PHONY: all clean run gen assets wordlists test smoke
 all: $(BUILD)/$(TARGET).gba
 
 gen: $(GFX_SRCS) $(WL_SRCS)
@@ -88,6 +89,9 @@ run: $(BUILD)/$(TARGET).gba
 test: | $(BUILD)
 	$(HOSTCC) -std=gnu11 -Wall -Wextra -O1 -DHOST_TEST -Iinclude tests/test_logic.c source/logic.c -o $(BUILD)/test_logic
 	$(BUILD)/test_logic
+
+smoke: $(BUILD)/$(TARGET).gba
+	$(PYTHON) tests/smoke.py --rom $<
 
 clean:
 	rm -rf $(BUILD)

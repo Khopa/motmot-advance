@@ -1,79 +1,435 @@
-// Wordle GBA — entry point (tile pipeline test)
-#include <tonc.h>
-#include "gfx_font.h"
-#include "gfx_cells.h"
-#include "gfx_keys.h"
+// Wordle GBA — entry point and screen state machine:
+//   title -> menu -> game -> result -> menu ...
+#include <string.h>
+#include "common.h"
+#include "game_state.h"
+#include "input.h"
+#include "keyboard.h"
+#include "lang.h"
+#include "logic.h"
+#include "render.h"
+#include "rng.h"
+#include "stats.h"
 
-#define FONT_CHARS " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?:.-/%><#',\x01\x02"
+typedef enum { SCR_TITLE, SCR_MENU, SCR_GAME, SCR_RESULT, SCR_STATS } Screen;
 
-static int font_index(char c)
+static GameState game;
+static KbCursor  kb;
+static u32       frames;            // since power-on; entropy for the RNG
+static u8        menu_lang;         // language shown/selected in the menu
+static int       menu_item;
+static bool      challenge_resumed;
+
+enum { MENU_LANG, MENU_CLASSIC, MENU_CHALLENGE, MENU_STATS, MENU_COUNT };
+
+#define LANG() (&languages[game.lang])
+
+static void next_frame(void)
 {
-    for (int i = 0; FONT_CHARS[i]; i++)
-        if (FONT_CHARS[i] == c) return i;
-    return 0;
+    VBlankIntrWait();
+    render_vblank();
+    input_poll();
+    frames++;
 }
+
+static void wait_frames(int n)
+{
+    while (n-- > 0) next_frame();
+}
+
+// ---------------------------------------------------------------------------
+// Title
+// ---------------------------------------------------------------------------
+
+static void draw_logo(int ty)
+{
+    static const char logo[] = "WORDLE";
+    static const u8 pals[] = { PAL_CORRECT, PAL_PRESENT, PAL_ABSENT,
+                               PAL_CORRECT, PAL_PRESENT, PAL_CORRECT };
+    for (int i = 0; i < 6; i++)
+        cell_draw(9 + i * 2, ty, logo[i], pals[i]);
+}
+
+static Screen title_screen(void)
+{
+    const Language *L = &languages[menu_lang];
+    render_clear();
+    decor_show(true);
+    draw_logo(5);
+    txt_center(8, "GAME BOY ADVANCE", PAL_TXT_GRAY);
+    txt_center(18, "HOMEBREW - 2026", PAL_TXT_DIM);
+
+    for (;;) {
+        next_frame();
+        if ((frames & 31) == 0) txt_center(13, L->press_start, PAL_TXT_WHITE);
+        if ((frames & 31) == 20) txt_clear_row(13);
+        if (input_hit(KEY_START | KEY_A)) return SCR_MENU;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Menu
+// ---------------------------------------------------------------------------
+
+static void draw_menu(void)
+{
+    const Language *L = &languages[menu_lang];
+    static const int rows[MENU_COUNT] = { 5, 8, 10, 12 };
+
+    txt_clear();
+    cells_clear();
+    draw_logo(1);
+
+    txt_puts(5, rows[MENU_LANG], L->menu_language, PAL_TXT_WHITE);
+    txt_puts(16, rows[MENU_LANG], "<", PAL_TXT_GRAY);
+    txt_puts(18, rows[MENU_LANG], L->name, PAL_TXT_YELLOW);
+    txt_puts(27, rows[MENU_LANG], ">", PAL_TXT_GRAY);
+
+    txt_puts(5, rows[MENU_CLASSIC], L->menu_classic, PAL_TXT_WHITE);
+
+    // Challenge: number of the next (or in-progress) challenge
+    u8 ch_lang = save.ch_active ? save.ch_lang : menu_lang;
+    txt_puts(5, rows[MENU_CHALLENGE], L->menu_challenge, PAL_TXT_WHITE);
+    int x = 5 + strlen(L->menu_challenge) + 1;
+    txt_puts(x, rows[MENU_CHALLENGE], "#", PAL_TXT_GRAY);
+    x += 1 + txt_uint(x + 1, rows[MENU_CHALLENGE], save.challenge_done[ch_lang] + 1, PAL_TXT_GRAY);
+    if (save.ch_active) {
+        txt_puts(x + 2, rows[MENU_CHALLENGE], languages[save.ch_lang].name, PAL_TXT_DIM);
+        txt_puts(x + 2 + strlen(languages[save.ch_lang].name), rows[MENU_CHALLENGE], "...", PAL_TXT_DIM);
+    }
+
+    txt_puts(5, rows[MENU_STATS], L->menu_stats, PAL_TXT_WHITE);
+    txt_center(18, L->menu_help, PAL_TXT_DIM);
+
+    txt_puts(3, rows[menu_item], ">", PAL_TXT_GREEN);
+}
+
+static Screen menu_screen(void)
+{
+    render_clear();
+    draw_menu();
+
+    for (;;) {
+        next_frame();
+        bool dirty = false;
+
+        if (input_nav(KEY_UP))   { menu_item = (menu_item + MENU_COUNT - 1) % MENU_COUNT; dirty = true; }
+        if (input_nav(KEY_DOWN)) { menu_item = (menu_item + 1) % MENU_COUNT; dirty = true; }
+
+        bool toggle = input_hit(KEY_LEFT | KEY_RIGHT) || (menu_item == MENU_LANG && input_hit(KEY_A));
+        if (toggle) {
+            menu_lang = (menu_lang + 1) % LANG_COUNT;
+            save.lang = menu_lang;
+            stats_save();
+            dirty = true;
+        }
+
+        if (input_hit(KEY_A) || input_hit(KEY_START)) {
+            switch (menu_item) {
+            case MENU_CLASSIC:   game.mode = MODE_CLASSIC;   return SCR_GAME;
+            case MENU_CHALLENGE: game.mode = MODE_CHALLENGE; return SCR_GAME;
+            case MENU_STATS:     return SCR_STATS;
+            default: break;
+            }
+        }
+        if (input_hit(KEY_B)) return SCR_TITLE;
+        if (dirty) draw_menu();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Game
+// ---------------------------------------------------------------------------
+
+static void start_game(u8 lang_id, u8 mode)
+{
+    challenge_resumed = false;
+
+    if (mode == MODE_CLASSIC) {
+        const Language *L = &languages[lang_id];
+        rng_seed(save.rng_state ^ (frames * 2654435761u));
+        u16 idx;
+        int tries = 0;
+        do {
+            idx = rng_range(L->n_solutions);
+        } while (stats_recently_played(lang_id, idx) && ++tries < 64);
+        stats_push_recent(lang_id, idx);
+        save.rng_state = rng_state();
+        stats_save();
+        game_init(&game, lang_id, MODE_CLASSIC, L->solutions[idx]);
+        return;
+    }
+
+    // Challenge: at most one in progress, in the language it was started in.
+    if (save.ch_active) lang_id = save.ch_lang;
+    const Language *L = &languages[lang_id];
+    u16 n = save.challenge_done[lang_id];
+    u16 idx = L->challenge_seq[n % L->n_solutions];
+    game_init(&game, lang_id, MODE_CHALLENGE, L->solutions[idx]);
+    game.challenge_no = n + 1;
+
+    if (save.ch_active) {
+        for (int i = 0; i < save.ch_n_guesses; i++)
+            game_replay_guess(&game, save.ch_guesses[i]);
+        challenge_resumed = save.ch_n_guesses > 0;
+    } else {
+        save.ch_active = 1;
+        save.ch_lang = lang_id;
+        save.ch_n_guesses = 0;
+        stats_save();
+    }
+}
+
+static void draw_mode_label(void)
+{
+    const Language *L = LANG();
+    txt_clear_row(MSG_TY);
+    if (game.mode == MODE_CLASSIC) {
+        txt_center(MSG_TY, L->mode_classic, PAL_TXT_DIM);
+    } else {
+        int len = strlen(L->mode_challenge);
+        int x = (SCREEN_TW - len - (game.challenge_no >= 100 ? 3 : game.challenge_no >= 10 ? 2 : 1)) / 2;
+        txt_puts(x, MSG_TY, L->mode_challenge, PAL_TXT_DIM);
+        txt_uint(x + len, MSG_TY, game.challenge_no, PAL_TXT_DIM);
+    }
+}
+
+static void show_message(const char *msg, int pal)
+{
+    txt_clear_row(MSG_TY);
+    txt_center(MSG_TY, msg, pal);
+}
+
+static void update_cursor(void)
+{
+    int tx, ty;
+    kb_key_pos(LANG(), kb.row, kb.col, &tx, &ty);
+    cursor_set(tx * 8, ty * 8, true);
+}
+
+// Colour the freshly committed row cell by cell.
+static void reveal_row(int row)
+{
+    for (int c = 1; c <= WORD_LEN; c++) {
+        render_grid_row(&game, row, c);
+        wait_frames(6);
+    }
+}
+
+static void finish_game(void)
+{
+    const Language *L = LANG();
+    bool won = game.status == STATUS_WON;
+
+    stats_record_result(won, game.n_guesses);
+    if (game.mode == MODE_CHALLENGE) {
+        save.ch_active = 0;
+        save.challenge_done[game.lang]++;
+        if (won) save.challenge_won++;
+    }
+    stats_save();
+
+    if (won) {
+        show_message(L->win_msgs[game.n_guesses - 1], PAL_TXT_GREEN);
+    } else {
+        char buf[32];
+        int n = strlen(L->lose_msg);
+        memcpy(buf, L->lose_msg, n);
+        memcpy(buf + n, game.target, WORD_LEN);
+        buf[n + WORD_LEN] = 0;
+        show_message(buf, PAL_TXT_YELLOW);
+    }
+    cursor_set(0, 0, false);
+
+    // let the player look at the board, then move on
+    for (int i = 0; i < 150; i++) {
+        next_frame();
+        if (input_hit(KEY_A | KEY_B | KEY_START)) break;
+    }
+}
+
+static Screen game_screen(void)
+{
+    start_game(menu_lang, game.mode);
+    const Language *L = LANG();
+
+    render_clear();
+    render_grid(&game);
+    render_keyboard(&game, L);
+    txt_center(HELP_TY, L->game_help, PAL_TXT_DIM);
+    kb.row = 0;
+    kb.col = 0;
+    update_cursor();
+
+    int msg_timer = 0;
+    if (challenge_resumed) {
+        show_message(L->challenge_resumed, PAL_TXT_YELLOW);
+        msg_timer = 120;
+    } else {
+        draw_mode_label();
+    }
+
+    for (;;) {
+        next_frame();
+
+        if (msg_timer > 0 && --msg_timer == 0) draw_mode_label();
+
+        if (input_hit(KEY_SELECT)) return SCR_MENU;   // Challenge progress is already saved
+
+        int dx = 0, dy = 0;
+        if (input_nav(KEY_LEFT))  dx = -1;
+        if (input_nav(KEY_RIGHT)) dx = 1;
+        if (input_nav(KEY_UP))    dy = -1;
+        if (input_nav(KEY_DOWN))  dy = 1;
+        if (dx || dy) {
+            kb_move(L, &kb, dx, dy);
+            update_cursor();
+        }
+
+        char key = 0;
+        if (input_hit(KEY_A))     key = kb_key_at(L, &kb);
+        if (input_hit(KEY_B))     key = KEY_DEL;
+        if (input_hit(KEY_START)) key = KEY_ENTER;
+        if (!key) continue;
+
+        if (key == KEY_DEL) {
+            if (game_backspace(&game)) render_grid_row(&game, game.n_guesses, 0);
+            continue;
+        }
+        if (key != KEY_ENTER) {
+            if (game_type_letter(&game, key)) render_grid_row(&game, game.n_guesses, 0);
+            continue;
+        }
+
+        SubmitResult res = game_submit(&game, L);
+        switch (res) {
+        case SUBMIT_TOO_SHORT:
+            show_message(L->msg_too_short, PAL_TXT_WHITE);
+            msg_timer = 90;
+            break;
+        case SUBMIT_NOT_IN_LIST:
+            show_message(L->msg_not_in_list, PAL_TXT_WHITE);
+            msg_timer = 90;
+            break;
+        default: {
+            int row = game.n_guesses - 1;
+            if (game.mode == MODE_CHALLENGE) {
+                memcpy(save.ch_guesses[row], game.guesses[row], WORD_LEN);
+                save.ch_n_guesses = game.n_guesses;
+                stats_save();
+            }
+            reveal_row(row);
+            render_keyboard(&game, L);
+            if (game.status != STATUS_PLAYING) {
+                finish_game();
+                return SCR_RESULT;
+            }
+            break;
+        }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Statistics / result
+// ---------------------------------------------------------------------------
+
+static void draw_stats(const Language *L, int ty, int highlight_row)
+{
+    txt_puts(2, ty, L->stats_played, PAL_TXT_GRAY);
+    txt_uint(3 + strlen(L->stats_played), ty, save.played, PAL_TXT_WHITE);
+    txt_puts(16, ty, L->stats_win_rate, PAL_TXT_GRAY);
+    int x = 17 + strlen(L->stats_win_rate);
+    unsigned rate = save.played ? (save.won * 100u) / save.played : 0;
+    x += txt_uint(x, ty, rate, PAL_TXT_WHITE);
+    txt_puts(x, ty, "%", PAL_TXT_WHITE);
+
+    ty++;
+    txt_puts(2, ty, L->stats_streak, PAL_TXT_GRAY);
+    txt_uint(3 + strlen(L->stats_streak), ty, save.streak, PAL_TXT_WHITE);
+    txt_puts(16, ty, L->stats_max_streak, PAL_TXT_GRAY);
+    txt_uint(17 + strlen(L->stats_max_streak), ty, save.max_streak, PAL_TXT_WHITE);
+
+    ty += 2;
+    txt_puts(2, ty, L->stats_distribution, PAL_TXT_GRAY);
+    unsigned max = 1;
+    for (int i = 0; i < MAX_GUESSES; i++)
+        if (save.dist[i] > max) max = save.dist[i];
+    for (int i = 0; i < MAX_GUESSES; i++) {
+        ty++;
+        txt_uint(2, ty, i + 1, PAL_TXT_WHITE);
+        int w = save.dist[i] ? 1 + (save.dist[i] * 19) / max : 0;
+        if (w > 20) w = 20;
+        int pal = i == highlight_row ? PAL_TXT_GREEN : PAL_TXT_DIM;
+        txt_fill(4, ty, w, '\x03', pal);
+        txt_uint(5 + w, ty, save.dist[i], PAL_TXT_WHITE);
+    }
+
+    ty += 2;
+    txt_puts(2, ty, L->stats_challenges, PAL_TXT_GRAY);
+    txt_uint(3 + strlen(L->stats_challenges), ty, save.challenge_won, PAL_TXT_WHITE);
+}
+
+static Screen stats_screen(void)
+{
+    const Language *L = &languages[menu_lang];
+    render_clear();
+    txt_center(1, L->stats_title, PAL_TXT_WHITE);
+    draw_stats(L, 3, -1);
+    txt_center(18, L->stats_back, PAL_TXT_DIM);
+    for (;;) {
+        next_frame();
+        if (input_hit(KEY_B | KEY_A | KEY_START)) return SCR_MENU;
+    }
+}
+
+static Screen result_screen(void)
+{
+    const Language *L = LANG();
+    bool won = game.status == STATUS_WON;
+    render_clear();
+
+    if (won) {
+        txt_center(1, L->win_msgs[game.n_guesses - 1], PAL_TXT_GREEN);
+    } else {
+        int n = strlen(L->lose_msg);
+        int x = (SCREEN_TW - n - WORD_LEN) / 2;
+        txt_puts(x, 1, L->lose_msg, PAL_TXT_YELLOW);
+        char w[WORD_LEN + 1];
+        memcpy(w, game.target, WORD_LEN);
+        w[WORD_LEN] = 0;
+        txt_puts(x + n, 1, w, PAL_TXT_WHITE);
+    }
+    draw_stats(L, 3, won ? game.n_guesses - 1 : -1);
+    txt_center(18, L->result_prompt, PAL_TXT_DIM);
+
+    for (;;) {
+        next_frame();
+        if (input_hit(KEY_A | KEY_START)) return SCR_GAME;    // same mode again
+        if (input_hit(KEY_B)) return SCR_MENU;
+    }
+}
+
+// ---------------------------------------------------------------------------
 
 int main(void)
 {
     irq_init(NULL);
     irq_enable(II_VBLANK);
 
-    // BG0: text (charblock 0, screenblock 28); BG1: cells (charblock 1, sb 29)
-    REG_BG0CNT = BG_CBB(0) | BG_SBB(28) | BG_4BPP | BG_REG_32x32 | BG_PRIO(0);
-    REG_BG1CNT = BG_CBB(1) | BG_SBB(29) | BG_4BPP | BG_REG_32x32 | BG_PRIO(1);
-    REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_BG1;
+    stats_load();
+    menu_lang = save.lang;
+    render_init();
 
-    memcpy32(&tile_mem[0][0], fontTiles, fontTilesLen / 4);
-    memcpy32(&tile_mem[1][0], cellsTiles, cellsTilesLen / 4);
-    memcpy32(&tile_mem[1][cellsTileCount], keysTiles, keysTilesLen / 4);
-
-    pal_bg_mem[0] = RGB15(2, 2, 2);
-    // bank 1: text white
-    pal_bg_bank[1][1] = CLR_WHITE;
-    // bank 2: empty cell, bank 3: typed, 4: absent, 5: present, 6: correct, 7: key
-    pal_bg_bank[2][1] = RGB15(2, 2, 2);   pal_bg_bank[2][2] = RGB15(7, 7, 7);   pal_bg_bank[2][3] = CLR_WHITE;
-    pal_bg_bank[3][1] = RGB15(2, 2, 2);   pal_bg_bank[3][2] = RGB15(11, 11, 11); pal_bg_bank[3][3] = CLR_WHITE;
-    pal_bg_bank[4][1] = RGB15(7, 7, 7);   pal_bg_bank[4][2] = RGB15(7, 7, 7);   pal_bg_bank[4][3] = CLR_WHITE;
-    pal_bg_bank[5][1] = RGB15(22, 19, 7); pal_bg_bank[5][2] = RGB15(22, 19, 7); pal_bg_bank[5][3] = CLR_WHITE;
-    pal_bg_bank[6][1] = RGB15(10, 17, 9); pal_bg_bank[6][2] = RGB15(10, 17, 9); pal_bg_bank[6][3] = CLR_WHITE;
-    pal_bg_bank[7][1] = RGB15(16, 16, 16); pal_bg_bank[7][2] = RGB15(16, 16, 16); pal_bg_bank[7][3] = CLR_WHITE;
-
-    const char *msg = "WORDLE GBA 0123 !?";
-    for (int i = 0; msg[i]; i++)
-        se_mem[28][1 * 32 + 6 + i] = font_index(msg[i]) | SE_PALBANK(1);
-
-    const char *word = "CRANE";
-    int pals[5] = {6, 5, 4, 3, 2};
-    for (int c = 0; c < 5; c++) {
-        int meta = word[c] - 'A' + 1;
-        if (c == 4) meta = 0;
-        int base = meta * 4;
-        int x = 10 + c * 2, y = 4;
-        se_mem[29][y * 32 + x]           = (base + 0) | SE_PALBANK(pals[c]);
-        se_mem[29][y * 32 + x + 1]       = (base + 1) | SE_PALBANK(pals[c]);
-        se_mem[29][(y + 1) * 32 + x]     = (base + 2) | SE_PALBANK(pals[c]);
-        se_mem[29][(y + 1) * 32 + x + 1] = (base + 3) | SE_PALBANK(pals[c]);
+    Screen scr = SCR_TITLE;
+    for (;;) {
+        switch (scr) {
+        case SCR_TITLE:  scr = title_screen();  break;
+        case SCR_MENU:   scr = menu_screen();   break;
+        case SCR_GAME:   scr = game_screen();   break;
+        case SCR_RESULT: scr = result_screen(); break;
+        case SCR_STATS:  scr = stats_screen();  break;
+        }
     }
-    const char *row = "QWERTYUIOP";
-    for (int c = 0; c < 10; c++) {
-        int base = cellsTileCount + (row[c] - 'A' + 1) * 4;
-        int x = 5 + c * 2, y = 14;
-        se_mem[29][y * 32 + x]           = (base + 0) | SE_PALBANK(7);
-        se_mem[29][y * 32 + x + 1]       = (base + 1) | SE_PALBANK(7);
-        se_mem[29][(y + 1) * 32 + x]     = (base + 2) | SE_PALBANK(7);
-        se_mem[29][(y + 1) * 32 + x + 1] = (base + 3) | SE_PALBANK(7);
-    }
-    // enter / del keys
-    for (int k = 0; k < 2; k++) {
-        int base = cellsTileCount + (27 + k) * 4;
-        int x = 8 + k * 4, y = 17;
-        se_mem[29][y * 32 + x]           = (base + 0) | SE_PALBANK(7);
-        se_mem[29][y * 32 + x + 1]       = (base + 1) | SE_PALBANK(7);
-        se_mem[29][(y + 1) * 32 + x]     = (base + 2) | SE_PALBANK(7);
-        se_mem[29][(y + 1) * 32 + x + 1] = (base + 3) | SE_PALBANK(7);
-    }
-
-    while (1)
-        VBlankIntrWait();
     return 0;
 }

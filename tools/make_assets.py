@@ -20,8 +20,8 @@ from PIL import Image
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
 
 # Glyph order in font.png; the C side (render.c FONT_CHARS) must match.
-# \x01 = enter icon, \x02 = backspace icon
-FONT_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?:.-/%><#',\x01\x02"
+# \x01 = enter icon, \x02 = backspace icon, \x03 = solid block (stat bars)
+FONT_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?:.-/%><#',\x01\x02\x03"
 
 GLYPHS = {
 " ": """
@@ -485,6 +485,16 @@ GLYPHS = {
 ..#...
 ......
 """,
+# bar segment (stat bars); drawn 8 px wide by blit_glyph
+"\x03": """
+######
+######
+######
+######
+######
+######
+######
+""",
 }
 
 GLYPH_W, GLYPH_H = 6, 7
@@ -499,6 +509,11 @@ def glyph_rows(ch):
 
 
 def blit_glyph(px, ch, x0, y0, color):
+    if ch == "\x03":                  # bar segment: full width, rows 1-6
+        for y in range(1, 7):
+            for x in range(8):
+                px[x0 - 1 + x, y0 + y] = color
+        return
     for y, row in enumerate(glyph_rows(ch)):
         for x, c in enumerate(row):
             if c == "#":
