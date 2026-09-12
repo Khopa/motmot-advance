@@ -13,6 +13,7 @@ TEST(blank_sram_gives_defaults)
     CHECK_EQ(save.marathon_diff, DIFF_EASY);
     CHECK_EQ(save.marathon_best[0], 0);
     CHECK_EQ(save.ta_length, 0);
+    CHECK_EQ(save.classic_won, 0);
     CHECK_MEM(save.initials, "AAA", 3);
     for (int l = 0; l < TA_LENGTH_COUNT; l++)
         for (int i = 0; i < TA_TOP; i++) CHECK_EQ(save.ta_board[l][i].used, 0);
@@ -50,6 +51,7 @@ TEST(save_then_load_round_trip)
     save.marathon_best[1] = 21;
     save.rng_state = 0x12345678;
     save.ta_length = 2;
+    save.classic_won = 8;
     memcpy(save.initials, "CLM", 3);
     save.ta_board[1][0] = (TimeRecord){ .frames = 5400, .initials = { 'A', 'B', 'C' }, .used = 1 };
     stats_save();
@@ -67,6 +69,7 @@ TEST(save_then_load_round_trip)
     CHECK_EQ(save.marathon_best[1], 21);
     CHECK_EQ(save.rng_state, 0x12345678);
     CHECK_EQ(save.ta_length, 2);
+    CHECK_EQ(save.classic_won, 8);
     CHECK_MEM(save.initials, "CLM", 3);
     CHECK_EQ(save.ta_board[1][0].frames, 5400);
     CHECK_MEM(save.ta_board[1][0].initials, "ABC", 3);

@@ -1,7 +1,11 @@
 // Rendering on Mode 0 with three regular backgrounds and one sprite.
 //   BG0  text        charblock 0 (font),        screenblock 28, priority 0
 //   BG1  cells/keys  charblock 1 (cells, keys), screenblock 29, priority 1
-//   BG2  title decor charblock 2 (pattern),     screenblock 30, priority 2
+//   BG2  text too    charblock 0 (font),        screenblock 30, priority 2,
+//        scrolled 4 px to the right: odd-length centred strings land here so
+//        every centred line shares the same pixel centre; also the title
+//        pattern, and the opaque background of modal boxes (raised above BG1
+//        while one is shown)
 //   OBJ  cursor      obj tiles 0-3, obj palette banks 0/1
 // Feedback colours are palette-bank swaps on the same tiles.
 #include <string.h>
@@ -14,19 +18,23 @@
 #include "gfx_decor.h"
 
 // Must match FONT_CHARS in tools/make_assets.py
-static const char FONT_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?:.-/%><#',\x01\x02\x03\x04\x05";
+static const char FONT_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?:.-/%><#',\x01\x02\x03\x04\x05\x06";
+#define CH_BLOCK '\x06'
 
 #define CBB_TEXT   0
 #define CBB_CELLS  1
-#define CBB_DECOR  2
 #define SBB_TEXT   28
 #define SBB_CELLS  29
-#define SBB_DECOR  30
+#define SBB_TEXT2  30            // BG2: second text layer / title pattern
 
 // tile 0-3 of the cells charblock stay blank (empty map entries)
 #define CELL_TILE_BASE 4
 #define KEY_TILE_BASE  (CELL_TILE_BASE + cellsTileCount)
-#define DECOR_TILE     1
+#define DECOR_TILE     fontTileCount    // pattern tile stored after the font
+#define TEXT2_SCROLL   (512 - 4)        // BG2 shifted 4 px to the right
+// BG2 normally sits under the cells (the title pattern must not cover the
+// logo); it is raised above them only while a modal box is shown.
+#define BG2CNT_BASE    (BG_CBB(CBB_TEXT) | BG_SBB(SBB_TEXT2) | BG_4BPP | BG_REG_32x32)
 
 #define CELL_META_COUNT 29      // " A-Z enter del" in cells.png / keys.png
 
@@ -34,6 +42,7 @@ static const char FONT_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?:.-/%><
 // groups of 4 and clears the interleaved affine matrices as well).
 static OBJ_ATTR obj_buffer[128];
 static u32 frame;
+static bool decor_on;
 
 // --- colours ---------------------------------------------------------------
 #define C_BACKDROP RGB15(2, 2, 2)       // #121213
@@ -44,6 +53,7 @@ static u32 frame;
 #define C_GREEN    RGB15(10, 17, 9)     // #538d4e
 #define C_WHITE    RGB15(31, 31, 31)
 #define C_DECOR    RGB15(4, 4, 4)
+#define C_BOX      RGB15(3, 3, 4)       // opaque modal background
 
 static void set_text_pal(int bank, u16 color)
 {
@@ -65,8 +75,7 @@ void render_init(void)
     memset32(&tile_mem[CBB_CELLS][0], 0, CELL_TILE_BASE * 8);
     memcpy32(&tile_mem[CBB_CELLS][CELL_TILE_BASE], cellsTiles, cellsTilesLen / 4);
     memcpy32(&tile_mem[CBB_CELLS][KEY_TILE_BASE], keysTiles, keysTilesLen / 4);
-    memset32(&tile_mem[CBB_DECOR][0], 0, 8);
-    memcpy32(&tile_mem[CBB_DECOR][DECOR_TILE], decorTiles, decorTilesLen / 4);
+    memcpy32(&tile_mem[CBB_TEXT][DECOR_TILE], decorTiles, decorTilesLen / 4);
     memcpy32(&tile_mem_obj[0][0], cursorTiles, cursorTilesLen / 4);
 
     pal_bg_mem[0] = C_BACKDROP;
@@ -83,12 +92,14 @@ void render_init(void)
     set_cell_pal(PAL_KEY, C_GRAY, C_GRAY, C_WHITE);
     set_cell_pal(PAL_LOGO, C_BACKDROP, C_WHITE, C_WHITE);
     pal_bg_bank[PAL_DECOR][1] = C_DECOR;
+    pal_bg_bank[PAL_TXT_BOX][1] = C_BOX;
     pal_obj_bank[0][1] = C_WHITE;
     pal_obj_bank[1][1] = C_GRAY;
 
     REG_BG0CNT = BG_CBB(CBB_TEXT)  | BG_SBB(SBB_TEXT)  | BG_4BPP | BG_REG_32x32 | BG_PRIO(0);
     REG_BG1CNT = BG_CBB(CBB_CELLS) | BG_SBB(SBB_CELLS) | BG_4BPP | BG_REG_32x32 | BG_PRIO(1);
-    REG_BG2CNT = BG_CBB(CBB_DECOR) | BG_SBB(SBB_DECOR) | BG_4BPP | BG_REG_32x32 | BG_PRIO(2);
+    REG_BG2CNT = BG2CNT_BASE | BG_PRIO(2);
+    REG_BG2HOFS = TEXT2_SCROLL;
 
     oam_init(obj_buffer, 128);
     render_clear();
@@ -107,11 +118,11 @@ void render_vblank(void)
 
 void render_clear(void)
 {
+    decor_on = false;
     txt_clear();
     cells_clear();
-    cells_scroll(0);
-    decor_show(false);
     cursor_set(0, 0, false);
+    REG_BG2CNT = BG2CNT_BASE | BG_PRIO(2);
 }
 
 // --- text -------------------------------------------------------------------
@@ -131,10 +142,35 @@ void txt_puts(int tx, int ty, const char *s, int pal)
         row[tx] = font_index(*s) | SE_PALBANK(pal);
 }
 
-void txt_center(int ty, const char *s, int pal)
+// Put a string on one of the two text layers (BG0, or BG2 shifted 4 px)
+static void puts_layer(int sbb, int tx, int ty, const char *s, int pal)
+{
+    u16 *row = &se_mem[sbb][ty * 32];
+    for (; *s && tx < SCREEN_TW; s++, tx++)
+        if (tx >= 0) row[tx] = font_index(*s) | SE_PALBANK(pal);
+}
+
+// Even-length strings centre exactly on BG0; odd-length ones would sit 4 px
+// left of the centre, so they go to BG2 which is scrolled 4 px right.
+int txt_center(int ty, const char *s, int pal)
 {
     int len = strlen(s);
-    txt_puts((SCREEN_TW - len) / 2, ty, s, pal);
+    int x = (SCREEN_TW - len) / 2;
+    puts_layer((len & 1) ? SBB_TEXT2 : SBB_TEXT, x, ty, s, pal);
+    return x;
+}
+
+void txt_center_marked(int ty, const char *s, int pal, bool selected)
+{
+    int len = strlen(s);
+    int x = (SCREEN_TW - len) / 2;
+    int sbb = (len & 1) ? SBB_TEXT2 : SBB_TEXT;
+    txt_clear_row(ty);
+    puts_layer(sbb, x, ty, s, pal);
+    if (selected) {
+        puts_layer(sbb, x - 2, ty, ">", PAL_TXT_GREEN);
+        puts_layer(sbb, x + len + 1, ty, "<", PAL_TXT_GREEN);
+    }
 }
 
 int txt_uint(int tx, int ty, unsigned v, int pal)
@@ -157,14 +193,51 @@ void txt_fill(int tx, int ty, int n, char c, int pal)
         se_mem[SBB_TEXT][ty * 32 + tx + i] = e;
 }
 
+static u32 text2_fill(void)
+{
+    u32 e = decor_on ? (DECOR_TILE | SE_PALBANK(PAL_DECOR)) : 0;
+    return e | (e << 16);
+}
+
 void txt_clear_row(int ty)
 {
     memset32(&se_mem[SBB_TEXT][ty * 32], 0, 16);
+    memset32(&se_mem[SBB_TEXT2][ty * 32], text2_fill(), 16);
 }
 
 void txt_clear(void)
 {
     memset32(se_mem[SBB_TEXT], 0, 32 * 32 / 2);
+    memset32(se_mem[SBB_TEXT2], text2_fill(), 32 * 32 / 2);
+}
+
+// --- modal box: opaque background on BG2 (above the cells), text on BG0 ----
+
+#define MODAL_TY 7
+#define MODAL_TH 6
+#define MODAL_TX 4
+#define MODAL_TW 21     // 21 tiles from column 4 on the 4 px-shifted layer: centred
+
+void modal_show(const char *line1, const char *line2)
+{
+    REG_BG2CNT = BG2CNT_BASE | BG_PRIO(0);      // above the cells and keys
+    for (int r = 0; r < MODAL_TH; r++) {
+        int ty = MODAL_TY + r;
+        u16 *row = &se_mem[SBB_TEXT2][ty * 32];
+        for (int c = 0; c < MODAL_TW; c++) {
+            bool edge = r == 0 || r == MODAL_TH - 1 || c == 0 || c == MODAL_TW - 1;
+            row[MODAL_TX + c] = font_index(CH_BLOCK) | SE_PALBANK(edge ? PAL_TXT_GRAY : PAL_TXT_BOX);
+        }
+        memset32(&se_mem[SBB_TEXT][ty * 32], 0, 16);
+    }
+    txt_puts((SCREEN_TW - strlen(line1)) / 2, MODAL_TY + 2, line1, PAL_TXT_YELLOW);
+    txt_puts((SCREEN_TW - strlen(line2)) / 2, MODAL_TY + 3, line2, PAL_TXT_WHITE);
+}
+
+void modal_hide(void)
+{
+    for (int r = 0; r < MODAL_TH; r++) txt_clear_row(MODAL_TY + r);
+    REG_BG2CNT = BG2CNT_BASE | BG_PRIO(2);
 }
 
 // --- cells / keys -----------------------------------------------------------
@@ -201,17 +274,12 @@ void cells_clear(void)
     memset32(se_mem[SBB_CELLS], 0, 32 * 32 / 2);
 }
 
-void cells_scroll(int px)
-{
-    REG_BG1HOFS = px;
-}
-
 // --- decor ------------------------------------------------------------------
 
 void decor_show(bool on)
 {
-    u32 e = on ? (DECOR_TILE | SE_PALBANK(PAL_DECOR)) : 0;
-    memset32(se_mem[SBB_DECOR], e | (e << 16), 32 * 32 / 2);
+    decor_on = on;
+    memset32(se_mem[SBB_TEXT2], text2_fill(), 32 * 32 / 2);
 }
 
 // --- cursor -----------------------------------------------------------------

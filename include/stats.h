@@ -15,12 +15,13 @@ typedef struct {
     u8   lang;                              // last language chosen in the menu
     u8   sound_on;                          // sound effects toggle
     u8   marathon_diff;                     // last Marathon difficulty chosen
-    u16  played;
+    u16  played;                            // words finished, all modes
     u16  won;
     u16  lost;
     u16  streak;
     u16  max_streak;
     u16  dist[MAX_GUESSES];                 // wins by number of guesses
+    u16  classic_won;                       // classic games solved
     u32  rng_state;                         // carried across power cycles
     // Recently played classic words (solution indices) per language
     u16  recent[LANG_COUNT][RECENT_WORDS];

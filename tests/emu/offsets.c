@@ -38,6 +38,7 @@ int main(void)
     P(save, SaveData, streak);
     P(save, SaveData, max_streak);
     P(save, SaveData, dist);
+    P(save, SaveData, classic_won);
     P(save, SaveData, marathon_best);
     P(save, SaveData, ta_board);
     P(save, SaveData, initials);

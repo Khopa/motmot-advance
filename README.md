@@ -32,8 +32,9 @@ mode with lives and high scores, and a Time Attack mode with leaderboards. Writt
 - Sound effects on the Game Boy tone generators: key clicks, buzzer on an
   unknown word, a different note for each revealed colour, win fanfare, loss
   jingle. Can be switched off in the menu (saved).
-- Persistent statistics (SRAM): games played, wins, current streak, best
-  streak, guess distribution, Marathon high scores, Time Attack leaderboards.
+- Persistent statistics (SRAM), global to every mode: words played and
+  found, current and best streak, guess distribution, classic games solved;
+  plus the Marathon high scores and Time Attack leaderboards.
 - The whole interface is translated into the selected language.
 
 ## Controls
@@ -44,7 +45,7 @@ mode with lives and high scores, and a Time Attack mode with leaderboards. Writt
 | A | Type the selected letter (or activate Enter / Backspace on the keyboard) |
 | B | Delete the last letter |
 | START | Submit the word |
-| SELECT | Quit the game (asks for confirmation; the Time Attack clock stops meanwhile) |
+| SELECT | Quit the game — a modal box asks for confirmation and hides the grid. In Time Attack there is no pause: SELECT abandons the run at once |
 | Left / Right | Change an option, turn the Records pages, move between initials |
 
 ## Building
@@ -100,8 +101,11 @@ include/game_state.h state of one round (target, guesses, feedback, keyboard col
 include/stats.h      saved data layout
 ```
 
-Video memory: charblock 0 = font, charblock 1 = cells and keys,
-charblock 2 = pattern; screenblocks 28/29/30; the only sprite is the cursor.
+Video memory: charblock 0 = font (+ title pattern), charblock 1 = cells and
+keys; screenblocks 28/29/30. BG2 is a second text layer scrolled 4 px so
+that odd-length centred strings share the exact centre of even ones; it also
+carries the title pattern and the opaque modal box. The only sprite is the
+cursor.
 
 ## Tests
 

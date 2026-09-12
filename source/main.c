@@ -82,21 +82,13 @@ static void draw_logo(int ty)
                                PAL_CORRECT, PAL_PRESENT, PAL_ABSENT };
     for (int i = 0; i < 6; i++)
         cell_draw(9 + i * 2, ty, logo[i], pals[i]);
-    cells_scroll(4);        // 96 px of cells vs 7 x 8 px of text: align the centres
     txt_center(ty + 2, "ADVANCE", PAL_TXT_WHITE);
 }
 
 // A centred menu line; the selected one is yellow between "> " and " <".
 static void draw_menu_line(int ty, const char *text, bool selected)
 {
-    int len = strlen(text);
-    int x = (SCREEN_TW - len) / 2;
-    txt_clear_row(ty);
-    txt_puts(x, ty, text, selected ? PAL_TXT_YELLOW : PAL_TXT_WHITE);
-    if (selected) {
-        txt_puts(x - 2, ty, ">", PAL_TXT_GREEN);
-        txt_puts(x + len + 1, ty, "<", PAL_TXT_GREEN);
-    }
+    txt_center_marked(ty, text, selected ? PAL_TXT_YELLOW : PAL_TXT_WHITE, selected);
 }
 
 // Label at the left, value between < > at the right (options / mode select)
@@ -510,21 +502,21 @@ static void reveal_row(int row)
     }
 }
 
-// SELECT: ask before leaving the game. Returns true to quit.
+// SELECT: ask before leaving the game, in a modal box that hides the grid.
+// Returns true to quit. (Never used in Time Attack: no pause there.)
 static bool confirm_quit(void)
 {
     const Language *L = LANG();
-    bool was_running = ta.running;
-    ta.running = false;                                 // the clock stops while asking
-    show_message(L->quit_confirm, PAL_TXT_YELLOW);
+    modal_show(L->quit_question, L->quit_choices);
+    cursor_set(0, 0, false);
     sfx_play(SFX_MOVE);
     for (;;) {
         next_frame();
         if (input_hit(KEY_A | KEY_START)) { sfx_play(SFX_SELECT); return true; }
         if (input_hit(KEY_B | KEY_SELECT)) {
             sfx_play(SFX_DELETE);
-            ta.running = was_running;
-            draw_mode_label();
+            modal_hide();
+            update_cursor();
             return false;
         }
     }
@@ -546,6 +538,7 @@ static void finish_game(void)
     bool won = game.status == STATUS_WON;
 
     stats_record_result(won, game.n_guesses);
+    if (won) save.classic_won++;
     stats_save();
 
     if (won) {
@@ -601,6 +594,7 @@ static bool marathon_after_guess(void)
     } else {
         return false;                           // word still in progress
     }
+    stats_record_result(game.status == STATUS_WON, game.n_guesses);   // global statistics
 
     wait_or_key(120);
     if (marathon.hp == 0) {
@@ -618,6 +612,7 @@ static bool time_attack_after_guess(void)
     if (game.status == STATUS_PLAYING) return false;
 
     ta.done++;
+    stats_record_result(game.status == STATUS_WON, game.n_guesses);   // global statistics
     if (game.status == STATUS_WON) {
         sfx_play(ta.done == ta.total ? SFX_WIN : SFX_CORRECT);
         show_message(L->win_msgs[game.n_guesses - 1], PAL_TXT_GREEN);
@@ -663,13 +658,18 @@ static Screen game_screen(void)
         if (game.mode == MODE_TIME_ATTACK && msg_timer == 0) draw_timer();
 
         if (input_hit(KEY_SELECT)) {
+            if (game.mode == MODE_TIME_ATTACK) {        // no pause against the clock:
+                ta.running = false;                     // SELECT abandons the run at once
+                sfx_play(SFX_LOSE);
+                return SCR_MENU;
+            }
             msg_timer = 0;
             if (!confirm_quit()) continue;
             if (game.mode == MODE_MARATHON) {           // the run ends here, score kept
                 marathon_finish();
                 return SCR_MARATHON_RESULT;
             }
-            return SCR_MENU;                            // classic / time attack: abandoned
+            return SCR_MENU;                            // classic: abandoned, not counted
         }
 
         int dx = 0, dy = 0;
@@ -768,6 +768,10 @@ static void draw_stats(const Language *L, int ty, int highlight_row)
         txt_fill(4, ty, w, '\x03', pal);
         txt_uint(5 + w, ty, save.dist[i], PAL_TXT_WHITE);
     }
+
+    ty += 2;
+    txt_puts(2, ty, L->stats_classic, PAL_TXT_GRAY);
+    txt_uint(3 + strlen(L->stats_classic), ty, save.classic_won, PAL_TXT_WHITE);
 }
 
 static Screen stats_screen(void)

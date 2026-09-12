@@ -1,8 +1,8 @@
 -- @timeout 240
--- Time Attack, 5 words: the clock runs (and stops while the quit question
--- is asked), a missed word costs 30 s, finishing ranks on the leaderboard,
--- initials are entered arcade-style, the record shows up in the records and
--- on the mode select screen, a slower run does not replace it.
+-- Time Attack, 5 words: the clock runs, there is no pause (SELECT abandons
+-- the run at once), a missed word costs 30 s, finishing ranks on the
+-- leaderboard, initials are entered arcade-style, the record shows up in the
+-- records and on the mode select screen, a slower run does not replace it.
 T.run(function()
   T.boot(T.LANG.FR)
   T.menu_start(T.MENU.TIME_ATTACK)
@@ -22,13 +22,13 @@ T.run(function()
   T.check_eq(T.time_attack().frames - f1, 60, "clock advances one unit per frame")
   T.shot("start")
 
-  -- the clock stops while the quit question is asked
-  T.press(T.K.SELECT); T.wait(2)
-  f1 = T.time_attack().frames
-  T.wait(30)
-  T.check_eq(T.time_attack().frames, f1, "clock stopped during the quit question")
-  T.press(T.K.B); T.wait(2)
-  T.check(T.time_attack().running, "clock resumes after cancelling")
+  -- no pause against the clock: SELECT abandons the run immediately
+  T.press(T.K.SELECT); T.wait(3)
+  T.check_eq(T.screen(), T.SCREEN.MENU, "SELECT leaves a time attack at once (no question)")
+  T.check(not T.time_attack().running, "clock stopped")
+  T.check(not T.save().board(0)[1].used, "an abandoned run is not ranked")
+  T.start_time_attack(0)
+  T.check(T.time_attack().running, "new run, clock running")
 
   -- word 1 found: straight to the next word
   T.solve()
@@ -80,8 +80,8 @@ T.run(function()
   T.press(T.K.A); T.wait(3)
   T.check_eq(T.screen(), T.SCREEN.GAME, "A replays the same length")
   T.check_eq(T.time_attack().done, 0, "fresh run")
-  T.quit(true)
-  T.check_eq(T.screen(), T.SCREEN.MENU, "quit returns to the menu")
+  T.press(T.K.SELECT); T.wait(3)
+  T.check_eq(T.screen(), T.SCREEN.MENU, "SELECT returns to the menu")
   T.check_eq(T.save().board(0)[1].initials, "CZA", "board untouched by the abandoned run")
 
   -- the record shows on the records and mode select screens

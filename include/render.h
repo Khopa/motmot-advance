@@ -24,6 +24,7 @@ enum {
     PAL_KEY,
     PAL_DECOR,
     PAL_LOGO,        // title logo cells: white border on dark
+    PAL_TXT_BOX,     // opaque modal background
 };
 
 void render_init(void);
@@ -32,7 +33,8 @@ void render_clear(void);         // wipe every layer, hide the cursor
 
 // text (BG0)
 void txt_puts(int tx, int ty, const char *s, int pal);
-void txt_center(int ty, const char *s, int pal);
+int  txt_center(int ty, const char *s, int pal);        // pixel-exact; returns the column
+void txt_center_marked(int ty, const char *s, int pal, bool selected);  // "> s <" when selected
 int  txt_uint(int tx, int ty, unsigned v, int pal);     // returns width
 void txt_fill(int tx, int ty, int n, char c, int pal);  // n copies of c
 void txt_clear_row(int ty);
@@ -42,10 +44,13 @@ void txt_clear(void);
 void cell_draw(int tx, int ty, char ch, int pal);
 void key_draw(int tx, int ty, char ch, int pal);
 void cells_clear(void);
-void cells_scroll(int px);       // horizontal offset of the cells layer (0 in game)
 
 // title pattern (BG2)
 void decor_show(bool on);
+
+// modal box covering the middle of the screen (grid included), two text lines
+void modal_show(const char *line1, const char *line2);
+void modal_hide(void);
 
 // cursor sprite, pixel coordinates
 void cursor_set(int px, int py, bool visible);

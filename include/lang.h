@@ -52,7 +52,8 @@ typedef struct {
     const char *win_msgs[MAX_GUESSES];  // by number of guesses used
     const char *lose_msg;               // followed by the target word
     const char *game_help;
-    const char *quit_confirm;           // "QUIT?  A: YES  B: NO"
+    const char *quit_question;          // "QUIT?"          (modal box, line 1)
+    const char *quit_choices;           // "A: YES   B: NO" (modal box, line 2)
     // results
     const char *result_prompt;          // "A: PLAY AGAIN  B: MENU"
     const char *marathon_over;
@@ -67,11 +68,12 @@ typedef struct {
     const char *records_help;           // "</>: PAGE  B: BACK"
     // statistics
     const char *stats_title;
-    const char *stats_played;
+    const char *stats_played;           // words played, all modes
     const char *stats_win_rate;
     const char *stats_streak;
     const char *stats_max_streak;
     const char *stats_distribution;
+    const char *stats_classic;          // classic games solved
     const char *stats_back;
 } Language;
 

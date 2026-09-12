@@ -65,6 +65,7 @@ T.run(function()
   T.check_eq(s.streak, before.streak + 1, "streak +1")
   T.check(s.max_streak >= s.streak, "best streak >= streak")
   T.check_eq(s.dist[2], before.dist[2] + 1, "distribution: one more win in 2")
+  T.check_eq(s.classic_won, before.classic_won + 1, "classic solved +1")
 
   -- A plays again in the same mode, B goes to the menu
   T.press(T.K.A); T.wait(3)

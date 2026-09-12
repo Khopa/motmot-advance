@@ -160,6 +160,7 @@ function T.save()
     marathon_diff = u8(s + O["save.marathon_diff"]),
     played = u16(s + O["save.played"]), won = u16(s + O["save.won"]), lost = u16(s + O["save.lost"]),
     streak = u16(s + O["save.streak"]), max_streak = u16(s + O["save.max_streak"]), dist = dist,
+    classic_won = u16(s + O["save.classic_won"]),
     marathon_best = { [0] = u16(s + O["save.marathon_best"]), [1] = u16(s + O["save.marathon_best"] + 2) },
     ta_length = u8(s + O["save.ta_length"]),
     initials = string.char(u8(s + O["save.initials"]), u8(s + O["save.initials"] + 1), u8(s + O["save.initials"] + 2)),

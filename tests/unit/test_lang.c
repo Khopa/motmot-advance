@@ -93,8 +93,8 @@ TEST(ui_strings_fit_the_screen)
         const char *full_width[] = {
             L->name, L->press_start, L->menu_help, L->mode_classic, L->msg_too_short,
             L->msg_not_in_list, L->stats_title, L->stats_distribution, L->stats_back,
-            L->result_prompt, L->game_help, L->marathon_over, L->new_record, L->quit_confirm,
-            L->options_title, L->select_help, L->ta_done, L->enter_initials, L->initials_help,
+            L->result_prompt, L->game_help, L->marathon_over, L->new_record, L->quit_question,
+            L->quit_choices, L->stats_classic, L->options_title, L->select_help, L->ta_done, L->enter_initials, L->initials_help,
             L->records_title, L->records_help,
         };
         for (unsigned i = 0; i < sizeof full_width / sizeof full_width[0]; i++) {
@@ -126,6 +126,13 @@ TEST(ui_strings_fit_the_screen)
         // time attack result lines
         CHECK(strlen(L->time) + 1 + 8 <= SCREEN_TW);
         CHECK(strlen(L->penalties) + 1 + 2 + 1 + 4 <= SCREEN_TW);
+        // modal box: 21 tiles wide, text lines inside must leave the frame
+        CHECK(strlen(L->quit_question) <= 17);
+        CHECK(strlen(L->quit_choices) <= 17);
+        // statistics: "WORDS 123" from column 2, "FOUND 100%" from column 16
+        CHECK(3 + strlen(L->stats_played) + 5 <= 16);
+        CHECK(17 + strlen(L->stats_win_rate) + 4 <= SCREEN_TW);
+        CHECK(3 + strlen(L->stats_classic) + 5 <= SCREEN_TW);
     }
 }
 
@@ -139,7 +146,8 @@ TEST(ui_strings_use_only_font_characters)
             L->menu_records, L->menu_stats, L->menu_options, L->menu_help, L->options_title,
             L->opt_language, L->opt_sound, L->on, L->off, L->difficulty[0], L->difficulty[1],
             L->words, L->best, L->select_help, L->mode_classic, L->score, L->word,
-            L->msg_too_short, L->msg_not_in_list, L->lose_msg, L->game_help, L->quit_confirm,
+            L->msg_too_short, L->msg_not_in_list, L->lose_msg, L->game_help, L->quit_question, L->quit_choices,
+            L->stats_classic,
             L->result_prompt, L->marathon_over, L->new_record, L->ta_done, L->time, L->penalties,
             L->enter_initials, L->initials_help, L->records_title, L->records_help,
             L->stats_title, L->stats_played, L->stats_win_rate, L->stats_streak, L->stats_max_streak,

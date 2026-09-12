@@ -33,9 +33,10 @@ Marathon avec des vies et des records, et un mode Time Attack avec classements. 
 - Effets sonores sur les générateurs de son Game Boy : clic de touche, buzzer
   sur un mot inconnu, une note différente par couleur révélée, fanfare de
   victoire, jingle de défaite. Désactivables dans le menu (sauvegardé).
-- Statistiques persistantes (SRAM) : parties, victoires, série en cours,
-  meilleure série, répartition par nombre d'essais, records du Marathon,
-  classements Time Attack.
+- Statistiques persistantes (SRAM), communes à tous les modes : mots joués
+  et trouvés, série en cours et record, répartition par nombre d'essais,
+  parties Classique résolues ; plus les records Marathon et les classements
+  Time Attack.
 - Interface entièrement traduite dans la langue choisie.
 
 ## Contrôles
@@ -46,7 +47,7 @@ Marathon avec des vies et des records, et un mode Time Attack avec classements. 
 | A | Saisir la lettre sélectionnée (ou activer Entrée / Effacer sur le clavier) |
 | B | Effacer la dernière lettre |
 | START | Valider le mot |
-| SELECT | Quitter la partie (avec confirmation ; le chrono Time Attack s'arrête pendant la question) |
+| SELECT | Quitter la partie — une fenêtre modale demande confirmation et masque la grille. En Time Attack pas de pause : SELECT abandonne immédiatement |
 | Gauche / Droite | Modifier une option, tourner les pages des Records, passer d'une initiale à l'autre |
 
 ## Compilation
@@ -102,8 +103,11 @@ include/game_state.h état d'une partie (mot cible, essais, feedback, clavier)
 include/stats.h      structure sauvegardée
 ```
 
-Mémoire vidéo : charblock 0 = police, charblock 1 = cases et touches,
-charblock 2 = motif ; screenblocks 28/29/30 ; l'unique sprite est le curseur.
+Mémoire vidéo : charblock 0 = police (+ motif du titre), charblock 1 = cases
+et touches ; screenblocks 28/29/30. BG2 est un second calque texte décalé de
+4 px : les lignes centrées de longueur impaire y sont dessinées pour partager
+exactement le centre des lignes paires ; il porte aussi le motif du titre et
+le fond opaque de la modale. L'unique sprite est le curseur.
 
 ## Tests
 
