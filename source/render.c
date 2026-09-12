@@ -6,6 +6,7 @@
 // Feedback colours are palette-bank swaps on the same tiles.
 #include <string.h>
 #include "render.h"
+#include "keyboard.h"
 #include "gfx_font.h"
 #include "gfx_cells.h"
 #include "gfx_keys.h"
@@ -108,6 +109,7 @@ void render_clear(void)
 {
     txt_clear();
     cells_clear();
+    cells_scroll(0);
     decor_show(false);
     cursor_set(0, 0, false);
 }
@@ -199,6 +201,11 @@ void cells_clear(void)
     memset32(se_mem[SBB_CELLS], 0, 32 * 32 / 2);
 }
 
+void cells_scroll(int px)
+{
+    REG_BG1HOFS = px;
+}
+
 // --- decor ------------------------------------------------------------------
 
 void decor_show(bool on)
@@ -252,13 +259,6 @@ void render_grid(const GameState *g)
 {
     for (int r = 0; r < MAX_GUESSES; r++)
         render_grid_row(g, r, WORD_LEN);
-}
-
-void kb_key_pos(const Language *lang, int row, int col, int *tx, int *ty)
-{
-    int n = strlen(lang->kb_rows[row]);
-    *tx = (SCREEN_TW - 2 * n) / 2 + col * 2;
-    *ty = KB_TY + row * 2;
 }
 
 void render_keyboard(const GameState *g, const Language *lang)

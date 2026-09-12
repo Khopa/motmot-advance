@@ -16,6 +16,14 @@ typedef enum { MODE_CLASSIC = 0, MODE_MARATHON = 1 } GameMode;
 
 typedef enum { DIFF_EASY = 0, DIFF_HARD = 1, DIFF_COUNT } Difficulty;   // Marathon
 
+// A Marathon run: chained random words, lives, high score per difficulty
+typedef struct {
+    u8   difficulty;                // Difficulty
+    u8   hp, hp_max;
+    u16  score;                     // words found
+    bool new_record;
+} MarathonState;
+
 typedef enum { STATUS_PLAYING = 0, STATUS_WON, STATUS_LOST } GameStatus;
 
 typedef struct {

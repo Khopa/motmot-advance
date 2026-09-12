@@ -22,13 +22,7 @@ static u32       frames;            // since power-on; entropy for the RNG
 static u8        menu_lang;         // language shown/selected in the menu
 static int       menu_item;
 
-// Marathon run: chained random words, lives, high score per difficulty
-static struct {
-    u8   difficulty;                // DIFF_EASY / DIFF_HARD
-    u8   hp, hp_max;
-    u16  score;                     // words found
-    bool new_record;
-} marathon;
+static MarathonState marathon;
 
 static const u8 marathon_hp[DIFF_COUNT] = { 3, 5 };
 
@@ -70,6 +64,7 @@ static void draw_logo(int ty)
                                PAL_CORRECT, PAL_PRESENT, PAL_ABSENT };
     for (int i = 0; i < 6; i++)
         cell_draw(9 + i * 2, ty, logo[i], pals[i]);
+    cells_scroll(4);        // 96 px of cells vs 7 x 8 px of text: align the centres
     txt_center(ty + 2, "ADVANCE", PAL_TXT_WHITE);
 }
 

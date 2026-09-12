@@ -6,9 +6,7 @@
 #include "common.h"
 #include "game_state.h"
 #include "lang.h"
-
-#define SCREEN_TW 30
-#define SCREEN_TH 20
+#include "layout.h"
 
 // Palette banks (BG). Text banks use colour index 1; cell/key banks use
 // 1 = fill, 2 = border, 3 = glyph.
@@ -28,13 +26,6 @@ enum {
     PAL_LOGO,        // title logo cells: white border on dark
 };
 
-// Game screen layout
-#define GRID_TX   10
-#define GRID_TY   1
-#define KB_TY     14
-#define HELP_TY   13
-#define MSG_TY    0
-
 void render_init(void);
 void render_vblank(void);        // commit OAM; call right after VBlankIntrWait
 void render_clear(void);         // wipe every layer, hide the cursor
@@ -51,6 +42,7 @@ void txt_clear(void);
 void cell_draw(int tx, int ty, char ch, int pal);
 void key_draw(int tx, int ty, char ch, int pal);
 void cells_clear(void);
+void cells_scroll(int px);       // horizontal offset of the cells layer (0 in game)
 
 // title pattern (BG2)
 void decor_show(bool on);
@@ -63,6 +55,5 @@ int  fb_to_pal(u8 fb);
 void render_grid_row(const GameState *g, int row, int cols_revealed);
 void render_grid(const GameState *g);
 void render_keyboard(const GameState *g, const Language *lang);
-void kb_key_pos(const Language *lang, int row, int col, int *tx, int *ty);
 
 #endif

@@ -1,10 +1,17 @@
 #include <string.h>
 #include "keyboard.h"
-#include "render.h"
+#include "layout.h"
 
 int kb_row_len(const Language *lang, int row)
 {
     return strlen(lang->kb_rows[row]);
+}
+
+void kb_key_pos(const Language *lang, int row, int col, int *tx, int *ty)
+{
+    int n = kb_row_len(lang, row);
+    *tx = (SCREEN_TW - 2 * n) / 2 + col * 2;
+    *ty = KB_TY + row * 2;
 }
 
 char kb_key_at(const Language *lang, const KbCursor *c)

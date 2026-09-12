@@ -10,6 +10,8 @@ typedef struct {
 } KbCursor;
 
 int  kb_row_len(const Language *lang, int row);
+// tile position of a key: rows are centred on screen, keys are 2 tiles wide
+void kb_key_pos(const Language *lang, int row, int col, int *tx, int *ty);
 char kb_key_at(const Language *lang, const KbCursor *c);
 // dx/dy in {-1,0,1}; horizontal moves wrap, vertical moves keep the
 // screen column as close as possible
