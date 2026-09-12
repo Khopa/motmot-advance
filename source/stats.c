@@ -15,14 +15,14 @@ SaveData save;
 
 #define SRAM ((volatile u8 *)MEM_SRAM)
 
-IWRAM_CODE static void sram_read(void *dst, u32 len)
+IWRAM_CODE __attribute__((noinline)) static void sram_read(void *dst, u32 len)
 {
     u8 *d = dst;
     for (u32 i = 0; i < len; i++)
         d[i] = SRAM[i];
 }
 
-IWRAM_CODE static void sram_write(const void *src, u32 len)
+IWRAM_CODE __attribute__((noinline)) static void sram_write(const void *src, u32 len)
 {
     const u8 *s = src;
     for (u32 i = 0; i < len; i++)
