@@ -4,15 +4,21 @@
 
 Un jeu de lettres pour la Game Boy Advance.
 
-![](assets/market/Mot.Mot.Advance-thumb.png)
+<p align="center">
+  <img src="assets/market/Mot.Mot.Advance-thumb.png" height="320" alt="MotMot Advance box art">
+  &nbsp;&nbsp;
+  <img src="docs/demo.gif" height="320" alt="Démo MotMot Advance">
+</p>
+<p align="center"><a href="assets/market/Mot.Mot.Advance-thumb-video.mp4">Bande-annonce (mp4)</a></p>
 
-<p align="center"><img src="docs/demo.gif" width="480" alt="Démo MotMot Advance"></p>
-
-[Bande-annonce (mp4)](assets/market/Mot.Mot.Advance-thumb-video.mp4)
-
-| Titre | Menu | Partie | Marathon | Time Attack |
-|---|---|---|---|---|
-| ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/marathon.png) | ![](docs/time_attack.png) |
+<p align="center">
+  <img src="docs/title.png" width="150" alt="Titre">
+  <img src="docs/menu.png" width="150" alt="Menu">
+  <img src="docs/game.png" width="150" alt="Partie">
+  <img src="docs/marathon.png" width="150" alt="Marathon">
+  <img src="docs/time_attack.png" width="150" alt="Time Attack">
+</p>
+<p align="center"><sub>Titre · Menu · Partie · Marathon · Time Attack</sub></p>
 
 ## Fonctionnalités
 

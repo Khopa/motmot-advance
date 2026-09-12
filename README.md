@@ -4,15 +4,21 @@
 
 A word-guessing game for the Game Boy Advance.
 
-![](assets/market/Mot.Mot.Advance-thumb.png)
+<p align="center">
+  <img src="assets/market/Mot.Mot.Advance-thumb.png" height="320" alt="MotMot Advance box art">
+  &nbsp;&nbsp;
+  <img src="docs/demo_en.gif" height="320" alt="MotMot Advance demo">
+</p>
+<p align="center"><a href="assets/market/Mot.Mot.Advance-thumb-video.mp4">Trailer (mp4)</a></p>
 
-<p align="center"><img src="docs/demo_en.gif" width="480" alt="MotMot Advance demo"></p>
-
-[Trailer (mp4)](assets/market/Mot.Mot.Advance-thumb-video.mp4)
-
-| Title | Menu | Game | Marathon | Time Attack |
-|---|---|---|---|---|
-| ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/marathon.png) | ![](docs/time_attack.png) |
+<p align="center">
+  <img src="docs/title.png" width="150" alt="Title">
+  <img src="docs/menu.png" width="150" alt="Menu">
+  <img src="docs/game.png" width="150" alt="Game">
+  <img src="docs/marathon.png" width="150" alt="Marathon">
+  <img src="docs/time_attack.png" width="150" alt="Time Attack">
+</p>
+<p align="center"><sub>Title · Menu · Game · Marathon · Time Attack</sub></p>
 
 ## Features
 
