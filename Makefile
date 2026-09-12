@@ -5,6 +5,7 @@
 #     make test       -> unit tests on the host (tests/unit)
 #     make emutest    -> scenarios in mGBA (tests/emu, needs a build with --script)
 #     make check      -> both
+#     make demo       -> re-record docs/demo.gif
 #     make clean
 
 TARGET   := motmot
@@ -47,7 +48,7 @@ SRCS := $(wildcard source/*.c)
 OBJS := $(patsubst source/%.c,$(BUILD)/%.o,$(SRCS)) \
         $(patsubst $(GEN)/%.c,$(BUILD)/%.o,$(GFX_SRCS) $(WL_SRCS))
 
-.PHONY: all clean run gen assets wordlists test emutest check
+.PHONY: all clean run gen assets wordlists test emutest check demo
 all: $(BUILD)/$(TARGET).gba
 
 gen: $(GFX_SRCS) $(WL_SRCS)
@@ -110,6 +111,10 @@ emutest: $(BUILD)/$(TARGET).gba
 	$(PYTHON) tests/emu/run.py --rom $< $(SCENARIO)
 
 check: test emutest
+
+# Re-record docs/demo.gif (scripted play session in mGBA)
+demo: $(BUILD)/$(TARGET).gba
+	$(PYTHON) tools/make_demo.py --rom $<
 
 clean:
 	rm -rf $(BUILD)

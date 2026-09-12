@@ -94,7 +94,7 @@ void render_init(void)
     pal_bg_bank[PAL_DECOR][1] = C_DECOR;
     pal_bg_bank[PAL_TXT_BOX][1] = C_BOX;
     pal_obj_bank[0][1] = C_WHITE;
-    pal_obj_bank[1][1] = C_GRAY;
+    pal_obj_bank[1][1] = RGB15(24, 24, 24);   // dim phase of the pulse, still lighter than the keys
 
     REG_BG0CNT = BG_CBB(CBB_TEXT)  | BG_SBB(SBB_TEXT)  | BG_4BPP | BG_REG_32x32 | BG_PRIO(0);
     REG_BG1CNT = BG_CBB(CBB_CELLS) | BG_SBB(SBB_CELLS) | BG_4BPP | BG_REG_32x32 | BG_PRIO(1);
