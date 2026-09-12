@@ -1,5 +1,7 @@
 # Wordle GBA
 
+*English version: [README.md](README.md)*
+
 Portage de Wordle sur Game Boy Advance : un mot de 5 lettres à deviner en
 6 essais, feedback vert / jaune / gris, clavier virtuel au pad, deux langues
 (français, anglais), statistiques sauvegardées en SRAM et un mode Challenge
@@ -11,7 +13,7 @@ déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
 
 ## Fonctionnalités
 
-- Écran titre, menu (langue, mode, statistiques).
+- Écran titre, choix de la langue, menu (mode, statistiques, langue).
 - **Mode Classique** : mot tiré au hasard parmi ~500 mots courants, sans
   répéter les 8 derniers mots joués.
 - **Mode Challenge** : le challenge n° *n* est toujours le même mot (séquence
@@ -75,7 +77,7 @@ seule tuile par lettre, colorée par bank de palette (`SE_PALBANK`).
 ## Architecture
 
 ```
-source/main.c        boucle de jeu, machine à états : titre / menu / jeu / résultat / stats
+source/main.c        boucle de jeu, machine à états : titre / langue / menu / jeu / résultat / stats
 source/logic.c       règles de Wordle (score avec lettres répétées, validation, saisie) — sans dépendance matérielle
 source/lang.c        table des langues : listes de mots, disposition clavier, textes
 source/render.c      Mode 0 : BG0 texte, BG1 grille + clavier, BG2 motif titre, sprite curseur
@@ -115,4 +117,6 @@ charblock 2 = motif ; screenblocks 28/29/30 ; l'unique sprite est le curseur.
 
 Les solutions sont les 500 lemmes les plus fréquents (noms, adjectifs,
 verbes, adverbes de 5 lettres après suppression des accents), moins une courte
-liste d'exclusion. Le code est sous licence MIT (voir `LICENSE`).
+liste d'exclusion.
+
+Code © 2026 Clément Perreau, licence MIT (voir `LICENSE`). Publié par Khopa.
