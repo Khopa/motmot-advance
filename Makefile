@@ -2,6 +2,7 @@
 # Build from an MSYS2 shell with devkitPro installed (DEVKITPRO=/opt/devkitpro):
 #     make            -> build/wordle.gba
 #     make run        -> launch in mGBA
+#     make test       -> host-side unit tests of the game logic
 #     make clean
 
 TARGET   := wordle
@@ -16,6 +17,7 @@ OBJCOPY  := $(PREFIX)objcopy
 GBAFIX   := $(DEVKITPRO)/tools/bin/gbafix
 MGBA     ?= /c/Program\ Files/mGBA/mGBA.exe
 PYTHON   ?= python
+HOSTCC   ?= gcc
 
 GAME_TITLE := WORDLE
 GAME_CODE  := WRDL
@@ -43,7 +45,7 @@ SRCS := $(wildcard source/*.c)
 OBJS := $(patsubst source/%.c,$(BUILD)/%.o,$(SRCS)) \
         $(patsubst $(GEN)/%.c,$(BUILD)/%.o,$(GFX_SRCS) $(WL_SRCS))
 
-.PHONY: all clean run gen assets wordlists
+.PHONY: all clean run gen assets wordlists test
 all: $(BUILD)/$(TARGET).gba
 
 gen: $(GFX_SRCS) $(WL_SRCS)
@@ -82,6 +84,10 @@ $(BUILD) $(GEN):
 
 run: $(BUILD)/$(TARGET).gba
 	$(MGBA) $< &
+
+test: | $(BUILD)
+	$(HOSTCC) -std=gnu11 -Wall -Wextra -O1 -DHOST_TEST -Iinclude tests/test_logic.c source/logic.c -o $(BUILD)/test_logic
+	$(BUILD)/test_logic
 
 clean:
 	rm -rf $(BUILD)
