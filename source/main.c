@@ -140,7 +140,6 @@ static Screen lang_screen(void)
 {
     render_clear();
     draw_logo(1);
-    txt_center(5, "LANGUE / LANGUAGE", PAL_TXT_GRAY);
     txt_center(18, "A: OK", PAL_TXT_DIM);
     draw_lang_choice();
 
@@ -644,7 +643,6 @@ static Screen game_screen(void)
     render_clear();
     render_grid(&game);
     render_keyboard(&game, L);
-    txt_center(HELP_TY, L->game_help, PAL_TXT_DIM);
     kb.row = 0;
     kb.col = 0;
     update_cursor();

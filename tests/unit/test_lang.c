@@ -93,7 +93,7 @@ TEST(ui_strings_fit_the_screen)
         const char *full_width[] = {
             L->name, L->press_start, L->menu_help, L->mode_classic, L->msg_too_short,
             L->msg_not_in_list, L->stats_title, L->stats_distribution, L->stats_back,
-            L->result_prompt, L->game_help, L->marathon_over, L->new_record, L->quit_question,
+            L->result_prompt, L->marathon_over, L->new_record, L->quit_question,
             L->quit_choices, L->stats_classic, L->options_title, L->select_help, L->ta_done, L->enter_initials, L->initials_help,
             L->records_title, L->records_help,
         };
@@ -146,7 +146,7 @@ TEST(ui_strings_use_only_font_characters)
             L->menu_records, L->menu_stats, L->menu_options, L->menu_help, L->options_title,
             L->opt_language, L->opt_sound, L->on, L->off, L->difficulty[0], L->difficulty[1],
             L->words, L->best, L->select_help, L->mode_classic, L->score, L->word,
-            L->msg_too_short, L->msg_not_in_list, L->lose_msg, L->game_help, L->quit_question, L->quit_choices,
+            L->msg_too_short, L->msg_not_in_list, L->lose_msg, L->quit_question, L->quit_choices,
             L->stats_classic,
             L->result_prompt, L->marathon_over, L->new_record, L->ta_done, L->time, L->penalties,
             L->enter_initials, L->initials_help, L->records_title, L->records_help,

@@ -51,7 +51,6 @@ typedef struct {
     const char *msg_not_in_list;
     const char *win_msgs[MAX_GUESSES];  // by number of guesses used
     const char *lose_msg;               // followed by the target word
-    const char *game_help;
     const char *quit_question;          // "QUIT?"          (modal box, line 1)
     const char *quit_choices;           // "A: YES   B: NO" (modal box, line 2)
     // results
