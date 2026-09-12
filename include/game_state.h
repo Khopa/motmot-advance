@@ -12,7 +12,9 @@ typedef enum {
     FB_CORRECT,     // green: right letter, right position
 } Feedback;
 
-typedef enum { MODE_CLASSIC = 0, MODE_CHALLENGE = 1 } GameMode;
+typedef enum { MODE_CLASSIC = 0, MODE_CHALLENGE = 1, MODE_MARATHON = 2 } GameMode;
+
+typedef enum { DIFF_EASY = 0, DIFF_HARD = 1, DIFF_COUNT } Difficulty;   // Marathon
 
 typedef enum { STATUS_PLAYING = 0, STATUS_WON, STATUS_LOST } GameStatus;
 

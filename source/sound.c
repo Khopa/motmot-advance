@@ -70,6 +70,9 @@ static const Step lose_sq1[] = { { E, 0, 8, 10, 0, 2 }, { DS, 0, 8, 10, 0, 2 },
                                  { D, 0, 8, 10, 0, 2 }, { CS, 0, 30, 10, 6, 2 }, END_STEP };
 static const Step lose_sq2[] = { { REST, 0, 24, 0, 0, 0 }, { A, -1, 30, 6, 6, 2 }, END_STEP };
 
+// hurt: two quick falling notes
+static const Step hurt_sq1[] = { { A, 0, 4, 11, 0, 1 }, { E, 0, 8, 11, 2, 1 }, END_STEP };
+
 static const Sfx sfx_table[SFX_COUNT] = {
     [SFX_KEY]     = { key_sq1, 0, 0 },
     [SFX_DELETE]  = { delete_sq1, 0, 0 },
@@ -81,6 +84,7 @@ static const Sfx sfx_table[SFX_COUNT] = {
     [SFX_CORRECT] = { correct_sq1, correct_sq2, 0 },
     [SFX_WIN]     = { win_sq1, win_sq2, 0 },
     [SFX_LOSE]    = { lose_sq1, lose_sq2, 0 },
+    [SFX_HURT]    = { hurt_sq1, 0, 0 },
 };
 
 // --- sequencer -------------------------------------------------------------

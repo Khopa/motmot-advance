@@ -5,8 +5,8 @@
 #include <string.h>
 #include "stats.h"
 
-#define SAVE_MAGIC   0x544F4D4Bu   // "KMOT"
-#define SAVE_VERSION 2
+#define SAVE_MAGIC   0x4D544F4Du   // "MOTM"
+#define SAVE_VERSION 3
 
 // Tells emulators and flash carts which backup type the ROM expects.
 const char save_type_id[] __attribute__((aligned(4), used)) = "SRAM_V113";

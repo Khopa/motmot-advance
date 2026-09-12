@@ -1,4 +1,4 @@
-# KhopaMotus
+# MotMot Advance
 
 *English version: [README.md](README.md)*
 
@@ -8,9 +8,9 @@ chaque lettre, clavier virtuel au pad, deux langues (français, anglais),
 effets sonores chiptune, statistiques sauvegardées en SRAM et un mode
 Challenge déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
 
-| Titre | Langue | Menu | Partie | Résultat |
+| Titre | Menu | Partie | Marathon | Résultat |
 |---|---|---|---|---|
-| ![](docs/title.png) | ![](docs/language.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/result.png) |
+| ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/marathon.png) | ![](docs/result.png) |
 
 ## Fonctionnalités
 
@@ -23,6 +23,10 @@ Challenge déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
   stocké en SRAM — pas besoin d'horloge). Un seul challenge en cours à la
   fois : la partie est sauvegardée à chaque essai et reprise si on quitte
   (SELECT) ou si on éteint la console.
+- **Mode Marathon** : des mots aléatoires enchaînés, avec des vies et un
+  record sauvegardé par difficulté. Facile : 3 vies, un mot raté en coûte
+  une. Difficile : 5 vies, chaque essai à partir du troisième en coûte une —
+  il faut trouver vite.
 - Validation des mots contre une liste large (~8 700 mots en anglais,
   ~6 600 en français, accents retirés comme dans l'émission).
 - Clavier AZERTY en français, QWERTY en anglais, avec touches Entrée / Effacer.
@@ -30,7 +34,8 @@ Challenge déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
   sur un mot inconnu, une note différente par couleur révélée, fanfare de
   victoire, jingle de défaite. Désactivables dans le menu (sauvegardé).
 - Statistiques persistantes (SRAM) : parties, victoires, série en cours,
-  meilleure série, répartition par nombre d'essais, challenges réussis.
+  meilleure série, répartition par nombre d'essais, challenges réussis,
+  records du Marathon.
 - Interface entièrement traduite dans la langue choisie.
 
 ## Contrôles
@@ -41,8 +46,8 @@ Challenge déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
 | A | Saisir la lettre sélectionnée (ou activer Entrée / Effacer sur le clavier) |
 | B | Effacer la dernière lettre |
 | START | Valider le mot |
-| SELECT | Quitter la partie et revenir au menu |
-| Gauche / Droite (menu) | Modifier l'option sélectionnée (langue, son) |
+| SELECT | Quitter la partie (avec confirmation ; un Challenge garde sa progression) |
+| Gauche / Droite (menu) | Modifier l'option sélectionnée (langue, difficulté du Marathon, son) |
 
 ## Compilation
 
@@ -51,7 +56,7 @@ groupe `gba-dev` (devkitARM, libtonc, gbafix), GNU make, Python 3 avec
 [Pillow](https://pypi.org/project/pillow/) (génération des tuiles).
 
 ```sh
-make            # -> build/khopamotus.gba
+make            # -> build/motmot.gba
 make run        # lance la ROM dans mGBA (variable MGBA pour changer le chemin)
 make test       # tests unitaires de la logique, compilés avec le gcc hôte
 make smoke      # test de bout en bout dans mGBA (voir plus bas)
@@ -108,7 +113,8 @@ charblock 2 = motif ; screenblocks 28/29/30 ; l'unique sprite est le curseur.
   développement 0.11 : `--mgba` pour indiquer le chemin). Le script lit
   l'état du jeu en RAM (adresses tirées de l'ELF), tape des mots au clavier
   virtuel, gagne une partie, en perd une, vérifie les statistiques, quitte et
-  reprend un Challenge, surveille les registres son, puis redémarre la ROM
+  reprend un Challenge, joue des Marathons dans les deux difficultés,
+  surveille les registres son, puis redémarre la ROM
   pour vérifier la persistance SRAM. Les captures d'écran vont dans
   `tests/out/`.
 

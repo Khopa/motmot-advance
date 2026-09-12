@@ -1,4 +1,4 @@
-# KhopaMotus
+# MotMot Advance
 
 *Version française : [README.fr.md](README.fr.md)*
 
@@ -8,9 +8,9 @@ on every letter, a D-pad driven virtual keyboard, two languages (French and
 English), chiptune sound effects, statistics saved to SRAM and a
 deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
 
-| Title | Language | Menu | Game | Result |
+| Title | Menu | Game | Marathon | Result |
 |---|---|---|---|---|
-| ![](docs/title.png) | ![](docs/language.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/result.png) |
+| ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/marathon.png) | ![](docs/result.png) |
 
 ## Features
 
@@ -22,6 +22,9 @@ deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
   pre-shuffled sequence indexed by the number of completed challenges stored
   in SRAM — no clock needed). Only one Challenge can be in progress: it is
   saved after every guess and resumed if you quit (SELECT) or power off.
+- **Marathon mode**: random words one after another, with lives and a saved
+  high score per difficulty. Easy: 3 lives, a missed word costs one. Hard:
+  5 lives, every guess from the third one costs one — solve fast or bleed.
 - Guesses are validated against a large list (~8,700 English words,
   ~6,600 French words; accents are stripped, as in the TV show).
 - AZERTY layout in French, QWERTY in English, with Enter / Backspace keys.
@@ -29,7 +32,7 @@ deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
   unknown word, a different note for each revealed colour, win fanfare, loss
   jingle. Can be switched off in the menu (saved).
 - Persistent statistics (SRAM): games played, wins, current streak, best
-  streak, guess distribution, challenges won.
+  streak, guess distribution, challenges won, Marathon high scores.
 - The whole interface is translated into the selected language.
 
 ## Controls
@@ -40,8 +43,8 @@ deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
 | A | Type the selected letter (or activate Enter / Backspace on the keyboard) |
 | B | Delete the last letter |
 | START | Submit the word |
-| SELECT | Quit the game and return to the menu |
-| Left / Right (menu) | Change the highlighted option (language, sound) |
+| SELECT | Quit the game (asks for confirmation; a Challenge keeps its progress) |
+| Left / Right (menu) | Change the highlighted option (language, Marathon difficulty, sound) |
 
 ## Building
 
@@ -50,7 +53,7 @@ Requirements: [devkitPro](https://devkitpro.org/wiki/Getting_Started) with the
 [Pillow](https://pypi.org/project/pillow/) (tile generation).
 
 ```sh
-make            # -> build/khopamotus.gba
+make            # -> build/motmot.gba
 make run        # launch the ROM in mGBA (override the path with MGBA=...)
 make test       # unit tests of the game logic, built with the host gcc
 make smoke      # end-to-end test in mGBA (see below)
@@ -107,7 +110,8 @@ charblock 2 = pattern; screenblocks 28/29/30; the only sprite is the cursor.
   development builds; use `--mgba` to point at it). The script reads the game
   state from RAM (addresses taken from the ELF), types words on the virtual
   keyboard, wins a game, loses a game, checks the statistics, quits and
-  resumes a Challenge, watches the sound registers, then reboots the ROM to
+  resumes a Challenge, plays Marathon runs in both difficulties, watches
+  the sound registers, then reboots the ROM to
   verify SRAM persistence. Screenshots land in `tests/out/`.
 
 ## Word list sources

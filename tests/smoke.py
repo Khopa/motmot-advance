@@ -7,7 +7,7 @@ win is recorded, visits the result and statistics screens, and takes a
 screenshot at every step into tests/out/. A second run checks that the
 statistics survived in SRAM.
 
-usage: smoke.py [--mgba PATH] [--rom build/khopamotus.gba]
+usage: smoke.py [--mgba PATH] [--rom build/motmot.gba]
 Needs an mGBA build with the --script option (0.11 dev or later).
 """
 import argparse
@@ -39,6 +39,7 @@ local GAME = %(game)d      -- GameState: lang(0) mode(1) status(2) target(3..7) 
 local KB   = %(kb)d        -- KbCursor: row, col
 local SAVE = %(save)d      -- SaveData: magic(0..3) version(4) lang(5) sound(6) played(8..9) won(10..11) lost(12..13) streak(14..15) best(16..17)
 local RUN  = %(run)d
+local MARATHON = %(marathon)d  -- difficulty(0) hp(1) hp_max(2) score(4..5)
 
 local log = io.open(ROM_OUT .. "/smoke" .. RUN .. ".log", "w")
 local function say(s) log:write(s, "\n"); log:flush(); console:log(s) end
@@ -126,10 +127,10 @@ local co = coroutine.create(function()
   shot("07_result")
   say("save.played = " .. u16(SAVE + 8) .. " won = " .. u16(SAVE + 10))
   press(K.B); wait(5)                         -- back to menu
-  press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CLASSIC -> STATS
+  press(K.DOWN); press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CLASSIC -> STATS
   shot("08_stats")
   press(K.B); wait(5)
-  press(K.UP); press(K.UP); press(K.UP)       -- STATS -> LANGUAGE
+  press(K.UP); press(K.UP); press(K.UP); press(K.UP)   -- STATS -> LANGUAGE
   press(K.RIGHT); wait(5)                     -- switch language
   shot("09_menu_en")
   press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CHALLENGE (English: started there in run 1)
@@ -139,13 +140,17 @@ local co = coroutine.create(function()
   local cd = (ct == "CRANE") and "SLATE" or "CRANE"
   type_word(cd); press(K.START); wait(45)
   say("challenge n_guesses after guess = " .. u8(GAME + 8))
-  press(K.SELECT); wait(5)                    -- quit to menu, progress saved
+  press(K.SELECT); wait(3); press(K.A); wait(5)   -- quit (confirmed), progress saved
   press(K.A); wait(5)                         -- re-enter the challenge
   say("challenge n_guesses after resume = " .. u8(GAME + 8))
   shot("11_challenge_resumed")
 
   -- lose a classic game: too-short message, then six valid wrong words
-  press(K.SELECT); wait(5)
+  press(K.SELECT); wait(3)
+  shot("12_quit_confirm")
+  press(K.B); wait(3)                         -- no, stay
+  say("still playing after cancelled quit: mode = " .. u8(GAME + 1))
+  press(K.SELECT); wait(3); press(K.A); wait(5)   -- yes, quit
   press(K.UP); press(K.A); wait(5)            -- menu item CHALLENGE -> CLASSIC
   local lt = target()
   local pool = ({ [0] = {"TERRE", "PORTE", "TABLE", "CHIEN", "ROUGE", "BLANC", "MONDE"},
@@ -164,6 +169,41 @@ local co = coroutine.create(function()
   press(K.A); wait(5)
   shot("14_result_lost")
   say("after loss: lost = " .. u16(SAVE + 12) .. " streak = " .. u16(SAVE + 14) .. " best = " .. u16(SAVE + 16))
+
+  -- marathon, easy: find two words in a row, quit, check the high score
+  press(K.B); wait(5)                         -- result -> menu (CLASSIC highlighted)
+  press(K.DOWN); press(K.DOWN)                -- MARATHON
+  while u8(SAVE + 7) ~= 0 do press(K.RIGHT) end   -- make sure difficulty = easy
+  shot("15_menu_marathon")
+  press(K.A); wait(5)
+  say("marathon easy: hp = " .. u8(MARATHON + 1) .. "/" .. u8(MARATHON + 2) .. " score = " .. u16(MARATHON + 4))
+  for i = 1, 2 do
+    type_word(target()); press(K.START); wait(40)
+    say("marathon word " .. i .. " found: score = " .. u16(MARATHON + 4) .. " hp = " .. u8(MARATHON + 1))
+    if i == 1 then shot("16_marathon_word_found") end
+    press(K.A); wait(5)                       -- skip the pause, next word
+  end
+  press(K.SELECT); wait(3); press(K.A); wait(5)   -- quit the run
+  shot("17_marathon_result")
+  say("marathon easy best = " .. u16(SAVE + 108))
+  press(K.B); wait(5)                         -- menu
+
+  -- marathon, hard: the third guess costs a life
+  press(K.RIGHT); wait(3)                     -- difficulty -> hard
+  press(K.A); wait(5)
+  say("marathon hard: hp = " .. u8(MARATHON + 1) .. "/" .. u8(MARATHON + 2))
+  local ht = target()
+  local n = 0
+  for _, w in ipairs(pool) do
+    if n < 3 and w ~= ht then
+      type_word(w); press(K.START); wait(60); n = n + 1
+      say("marathon hard guess " .. n .. ": hp = " .. u8(MARATHON + 1))
+    end
+  end
+  shot("18_marathon_hard")
+  press(K.SELECT); wait(3); press(K.A); wait(5)
+  say("marathon hard best = " .. u16(SAVE + 110))
+  press(K.B); wait(5)
   say("done")
 end)
 
@@ -192,7 +232,7 @@ end)
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mgba", default="C:/Tools/mgba-nightly/mGBA.exe")
-    ap.add_argument("--rom", default=os.path.join(ROOT, "build", "khopamotus.gba"))
+    ap.add_argument("--rom", default=os.path.join(ROOT, "build", "motmot.gba"))
     ap.add_argument("--keep-save", action="store_true", help="do not delete the .sav first")
     a = ap.parse_args()
 
@@ -200,7 +240,7 @@ def main():
     elf = os.path.splitext(a.rom)[0] + ".elf"
     sav = os.path.splitext(a.rom)[0] + ".sav"
     syms = symbol_addresses(elf)
-    for s in ("game", "kb", "save"):
+    for s in ("game", "kb", "save", "marathon"):
         if s not in syms:
             sys.exit(f"symbol {s} not found in {elf}")
     if not a.keep_save and os.path.exists(sav):
@@ -211,7 +251,7 @@ def main():
         script = os.path.join(ROOT, "build", f"smoke{run}.lua")
         with open(script, "w") as f:
             f.write(LUA % dict(out=OUT.replace("\\", "/"), game=syms["game"], kb=syms["kb"],
-                               save=syms["save"], run=run))
+                               save=syms["save"], marathon=syms["marathon"], run=run))
         subprocess.run([a.mgba, "--script", script, a.rom], timeout=120)
         with open(os.path.join(OUT, f"smoke{run}.log")) as f:
             log = f.read()
@@ -233,7 +273,15 @@ def main():
             (f"challenge restored from SRAM ({expect} guess)", f"n_guesses at entry = {expect}" in log),
             (f"challenge guess saved ({run})", f"after guess = {run}" in log),
             (f"challenge resumed after quit ({run})", f"after resume = {run}" in log),
+            ("quit needs confirmation", "still playing after cancelled quit: mode = 1" in log),
             ("game lost after 6 guesses", "lost: status = 2 n_guesses = 6" in log),
+            ("marathon easy starts with 3 lives", "marathon easy: hp = 3/3 score = 0" in log),
+            ("marathon easy: two words found", "marathon word 2 found: score = 2 hp = 3" in log),
+            ("marathon easy high score saved", "marathon easy best = 2" in log),
+            ("marathon hard starts with 5 lives", "marathon hard: hp = 5/5" in log),
+            ("marathon hard: no loss on guesses 1-2", "marathon hard guess 2: hp = 5" in log),
+            ("marathon hard: third guess costs a life", "marathon hard guess 3: hp = 4" in log),
+            ("marathon hard high score saved", "marathon hard best = 0" in log),
             (f"loss recorded (lost = {run}, streak reset)", f"lost = {run} streak = 0 best = 1" in log),
         ]
         for name, ok in checks:

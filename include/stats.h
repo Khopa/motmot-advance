@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "lang.h"
+#include "game_state.h"
 
 #define RECENT_WORDS 8      // classic-mode words kept to avoid near repeats
 
@@ -12,6 +13,7 @@ typedef struct {
     u8   version;
     u8   lang;                              // last language chosen in the menu
     u8   sound_on;                          // sound effects toggle
+    u8   marathon_diff;                     // last Marathon difficulty chosen
     u16  played;
     u16  won;
     u16  lost;
@@ -29,6 +31,7 @@ typedef struct {
     // Recently played classic words (solution indices) per language
     u16  recent[LANG_COUNT][RECENT_WORDS];
     u8   recent_pos[LANG_COUNT];
+    u16  marathon_best[DIFF_COUNT];         // Marathon high score per difficulty
     u16  checksum;
 } SaveData;
 

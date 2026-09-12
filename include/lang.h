@@ -3,6 +3,7 @@
 #define LANG_H
 
 #include "common.h"
+#include "game_state.h"
 
 typedef enum { LANG_FR = 0, LANG_EN = 1, LANG_COUNT } LangId;
 
@@ -27,6 +28,8 @@ typedef struct {
     const char *menu_language;
     const char *menu_classic;
     const char *menu_challenge;
+    const char *menu_marathon;
+    const char *difficulty[DIFF_COUNT];
     const char *menu_stats;
     const char *menu_sound;
     const char *on;
@@ -48,6 +51,11 @@ typedef struct {
     const char *stats_back;
     const char *result_prompt;          // "A: AGAIN  B: MENU"
     const char *challenge_resumed;
+    const char *marathon_score;
+    const char *marathon_best;
+    const char *marathon_over;
+    const char *new_record;
+    const char *quit_confirm;           // "quit? A: yes  B: no"
     const char *game_help;              // controls hint in game
 } Language;
 

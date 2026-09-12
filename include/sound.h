@@ -16,6 +16,7 @@ typedef enum {
     SFX_CORRECT,    // reveal: green letter
     SFX_WIN,        // fanfare
     SFX_LOSE,       // sad descending notes
+    SFX_HURT,       // Marathon: a life lost
     SFX_COUNT
 } SfxId;
 
