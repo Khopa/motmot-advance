@@ -5,6 +5,7 @@
   <img src="https://img.shields.io/badge/platform-Game%20Boy%20Advance-7b68ee?style=flat-square" alt="Platform: Game Boy Advance">
   <img src="https://img.shields.io/badge/language-C-00599c?style=flat-square" alt="Written in C">
   <img src="https://img.shields.io/badge/languages-FR%20EN%20ES%20DE%20IT-f5c400?style=flat-square" alt="Cinq langues">
+  <img src="https://img.shields.io/badge/AI-Claude%20Opus%205%20--%20High-d97757?style=flat-square" alt="AI: Claude Opus 5 - High">
   <a href="https://github.com/Khopa/motmot-advance/commits/main"><img src="https://img.shields.io/github/last-commit/Khopa/motmot-advance?style=flat-square" alt="Dernier commit"></a>
 </p>
 
