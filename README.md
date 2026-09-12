@@ -6,7 +6,9 @@ A word-guessing game for the Game Boy Advance.
 
 ![](assets/market/Mot.Mot.Advance-thumb.png)
 
-<p align="center"><img src="docs/demo.gif" width="480" alt="MotMot Advance demo"></p>
+<p align="center"><img src="docs/demo_en.gif" width="480" alt="MotMot Advance demo"></p>
+
+[Trailer (mp4)](assets/market/Mot.Mot.Advance-thumb-video.mp4)
 
 | Title | Menu | Game | Marathon | Time Attack |
 |---|---|---|---|---|
@@ -47,7 +49,7 @@ make run        # launch the ROM in mGBA (override the path with MGBA=...)
 make test       # unit tests on the host (tests/unit)
 make emutest    # scenarios played in mGBA (tests/emu)
 make check      # both
-make demo       # re-record docs/demo.gif in mGBA
+make demo       # re-record docs/demo.gif and docs/demo_en.gif in mGBA
 make clean
 ```
 
@@ -68,7 +70,7 @@ Everything generated is produced at build time in `build/gen/`:
 | `tools/png2gba.py` | Converts a PNG into 4bpp tiles + BGR555 palette as C arrays. `--meta 2 2` (through `assets/<name>.opts`) emits tiles in 16×16 metatile order. |
 | `tools/gen_wordlist.py` | Turns `data/<lang>_solutions.txt` and `data/<lang>_valid.txt` into C tables: solutions and sorted valid words (binary search). |
 | `tools/build_wordlists.py` | Rebuilds the `data/*.txt` files from the external sources (needs network, `make wordlists`). |
-| `tools/make_demo.py` | Records `docs/demo.gif`: plays `tools/demo.lua` in mGBA through the test library, grabbing one frame out of three (`make demo`). |
+| `tools/make_demo.py` | Records `docs/demo.gif` (French) and `docs/demo_en.gif` (English): plays `tools/demo.lua` in mGBA through the test library, grabbing one frame out of three (`make demo`). |
 
 ## Architecture
 

@@ -8,6 +8,8 @@ Un jeu de lettres pour la Game Boy Advance.
 
 <p align="center"><img src="docs/demo.gif" width="480" alt="Démo MotMot Advance"></p>
 
+[Bande-annonce (mp4)](assets/market/Mot.Mot.Advance-thumb-video.mp4)
+
 | Titre | Menu | Partie | Marathon | Time Attack |
 |---|---|---|---|---|
 | ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/marathon.png) | ![](docs/time_attack.png) |
@@ -47,7 +49,7 @@ make run        # lance la ROM dans mGBA (variable MGBA pour changer le chemin)
 make test       # tests unitaires sur PC (tests/unit)
 make emutest    # scénarios joués dans mGBA (tests/emu)
 make check      # les deux
-make demo       # réenregistre docs/demo.gif dans mGBA
+make demo       # réenregistre docs/demo.gif et docs/demo_en.gif dans mGBA
 make clean
 ```
 
@@ -68,7 +70,7 @@ Tout ce qui est généré l'est à la compilation, dans `build/gen/` :
 | `tools/png2gba.py` | Convertit un PNG en tuiles 4bpp + palette BGR555 sous forme de tableaux C. Option `--meta 2 2` (via `assets/<nom>.opts`) pour émettre les tuiles par métatuile 16×16. |
 | `tools/gen_wordlist.py` | Transforme `data/<langue>_solutions.txt` et `data/<langue>_valid.txt` en tableaux C : solutions et mots valides triés (recherche dichotomique). |
 | `tools/build_wordlists.py` | Reconstruit les fichiers `data/*.txt` depuis les sources externes (réseau nécessaire, `make wordlists`). |
-| `tools/make_demo.py` | Enregistre `docs/demo.gif` : joue `tools/demo.lua` dans mGBA via la bibliothèque de test, une image capturée sur trois (`make demo`). |
+| `tools/make_demo.py` | Enregistre `docs/demo.gif` (français) et `docs/demo_en.gif` (anglais) : joue `tools/demo.lua` dans mGBA via la bibliothèque de test, une image capturée sur trois (`make demo`). |
 
 ## Architecture
 

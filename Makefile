@@ -5,7 +5,7 @@
 #     make test       -> unit tests on the host (tests/unit)
 #     make emutest    -> scenarios in mGBA (tests/emu, needs a build with --script)
 #     make check      -> both
-#     make demo       -> re-record docs/demo.gif
+#     make demo       -> re-record docs/demo.gif (FR) and docs/demo_en.gif (EN)
 #     make clean
 
 TARGET   := motmot
@@ -114,7 +114,8 @@ check: test emutest
 
 # Re-record docs/demo.gif (scripted play session in mGBA)
 demo: $(BUILD)/$(TARGET).gba
-	$(PYTHON) tools/make_demo.py --rom $<
+	$(PYTHON) tools/make_demo.py --rom $< --lang 0 --out docs/demo.gif
+	$(PYTHON) tools/make_demo.py --rom $< --lang 1 --out docs/demo_en.gif
 
 clean:
 	rm -rf $(BUILD)

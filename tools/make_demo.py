@@ -3,6 +3,7 @@
 screenshot every few frames, then assemble an animated GIF.
 
 usage: make_demo.py [--rom build/motmot.gba] [--mgba PATH] [--every 3] [--scale 2]
+                    [--lang 0]
                     [--out docs/demo.gif]
 Reuses tests/emu/run.py (symbols, offsets, lib.lua) so the demo script can
 drive the game exactly like a test scenario.
@@ -28,6 +29,7 @@ def main():
     ap.add_argument("--mgba", default=next((p for p in emu.MGBA_CANDIDATES if p and os.path.exists(p)), None))
     ap.add_argument("--every", type=int, default=3, help="capture one frame out of N (60 fps source)")
     ap.add_argument("--scale", type=int, default=2)
+    ap.add_argument("--lang", type=int, default=0, help="language index on the boot screen (0 FR, 1 EN, 2 ES, 3 DE, 4 IT)")
     ap.add_argument("--out", default=os.path.join(ROOT, "docs", "demo.gif"))
     a = ap.parse_args()
     if not a.mgba:
@@ -46,7 +48,8 @@ def main():
     offs = emu.struct_offsets()
     with open(os.path.join(HERE, "demo.lua"), encoding="utf-8") as f:
         source = f.read()
-    cfg_extra = f'CFG.frames_dir = "{frames_dir.replace(chr(92), "/")}"; CFG.every = {a.every}\n'
+    cfg_extra = (f'CFG.frames_dir = "{frames_dir.replace(chr(92), "/")}"; '
+                 f'CFG.every = {a.every}; CFG.lang = {a.lang}\n')
     emu.WORK = work
     script = emu.build_script("demo", cfg_extra + source, syms, offs, work.replace("\\", "/"))
     subprocess.run([a.mgba, "-C", "videoSync=0", "-C", "audioSync=0", "--script", script, rom],

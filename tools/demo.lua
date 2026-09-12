@@ -1,6 +1,7 @@
 -- Scripted play session captured frame by frame for docs/demo.gif.
 -- Run by tools/make_demo.py on top of tests/emu/lib.lua (same T.* helpers).
--- CFG.frames_dir receives one PNG every CFG.every frames.
+-- CFG.frames_dir receives one PNG every CFG.every frames; CFG.lang picks
+-- the language (T.LANG index) on the boot screen.
 local shot_n = 0
 local capture = true
 local function tick()
@@ -16,8 +17,10 @@ T.run(function()
   T.wait = function(n) for _ = 1, n do coroutine.yield(); tick() end end
 
   T.wait(30)                                    -- language screen
-  T.press(T.K.DOWN, 6); T.wait(20)              -- browse: ENGLISH
-  T.press(T.K.UP, 6); T.wait(30)                -- back to FRANCAIS
+  T.press(T.K.DOWN, 6); T.wait(20)              -- browse down...
+  T.press(T.K.UP, 6); T.wait(20)                -- ...and back
+  for _ = 1, CFG.lang do T.press(T.K.DOWN, 6); T.wait(12) end
+  T.wait(20)
   T.press(T.K.A); T.wait(120)                   -- title, PRESS START blinking
   T.press(T.K.START); T.wait(40)                -- menu
   T.press(T.K.DOWN, 6); T.wait(20)
