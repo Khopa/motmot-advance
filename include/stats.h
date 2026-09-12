@@ -1,4 +1,4 @@
-// Persistent data (SRAM): statistics, Challenge progress, RNG state.
+// Persistent data (SRAM): statistics, options, RNG state.
 #ifndef STATS_H
 #define STATS_H
 
@@ -20,14 +20,7 @@ typedef struct {
     u16  streak;
     u16  max_streak;
     u16  dist[MAX_GUESSES];                 // wins by number of guesses
-    u16  challenge_done[LANG_COUNT];        // completed challenges per language
-    u16  challenge_won;
     u32  rng_state;                         // carried across power cycles
-    // Challenge in progress (at most one at a time)
-    u8   ch_active;
-    u8   ch_lang;
-    u8   ch_n_guesses;
-    char ch_guesses[MAX_GUESSES][WORD_LEN];
     // Recently played classic words (solution indices) per language
     u16  recent[LANG_COUNT][RECENT_WORDS];
     u8   recent_pos[LANG_COUNT];

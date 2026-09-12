@@ -6,7 +6,7 @@ A word-guessing game for the Game Boy Advance in the spirit of the TV show
 *Motus*: find a 5-letter word in 6 tries with green / yellow / grey feedback
 on every letter, a D-pad driven virtual keyboard, two languages (French and
 English), chiptune sound effects, statistics saved to SRAM and a
-deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
+Marathon mode with lives and high scores. Written in C with libtonc — no assembly, no C++.
 
 | Title | Menu | Game | Marathon | Result |
 |---|---|---|---|---|
@@ -18,10 +18,6 @@ deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
   sound).
 - **Classic mode**: a random word among ~500 common words, never repeating
   the last 8 words played.
-- **Challenge mode**: challenge #*n* is always the same word (an embedded
-  pre-shuffled sequence indexed by the number of completed challenges stored
-  in SRAM — no clock needed). Only one Challenge can be in progress: it is
-  saved after every guess and resumed if you quit (SELECT) or power off.
 - **Marathon mode**: random words one after another, with lives and a saved
   high score per difficulty. Easy: 3 lives, a missed word costs one. Hard:
   5 lives, every guess from the third one costs one — solve fast or bleed.
@@ -32,7 +28,7 @@ deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
   unknown word, a different note for each revealed colour, win fanfare, loss
   jingle. Can be switched off in the menu (saved).
 - Persistent statistics (SRAM): games played, wins, current streak, best
-  streak, guess distribution, challenges won, Marathon high scores.
+  streak, guess distribution, Marathon high scores.
 - The whole interface is translated into the selected language.
 
 ## Controls
@@ -43,7 +39,7 @@ deterministic Challenge mode. Written in C with libtonc — no assembly, no C++.
 | A | Type the selected letter (or activate Enter / Backspace on the keyboard) |
 | B | Delete the last letter |
 | START | Submit the word |
-| SELECT | Quit the game (asks for confirmation; a Challenge keeps its progress) |
+| SELECT | Quit the game (asks for confirmation) |
 | Left / Right (menu) | Change the highlighted option (language, Marathon difficulty, sound) |
 
 ## Building
@@ -75,7 +71,7 @@ Everything generated is produced at build time in `build/gen/`:
 |---|---|
 | `tools/make_assets.py` | Draws the source images `assets/*.png` (indexed PNGs) from ASCII pixel art: 6×7 font (A-Z, 0-9, punctuation, Enter/Backspace icons, bar segment), 16×16 grid cells and rounded keyboard keys with the letter pre-composed, cursor sprite, title background pattern. `make assets` regenerates them. |
 | `tools/png2gba.py` | Converts a PNG into 4bpp tiles + BGR555 palette as C arrays. `--meta 2 2` (through `assets/<name>.opts`) emits tiles in 16×16 metatile order. |
-| `tools/gen_wordlist.py` | Turns `data/<lang>_solutions.txt` and `data/<lang>_valid.txt` into C tables: solutions, sorted valid words (binary search), fixed permutation for Challenge mode. |
+| `tools/gen_wordlist.py` | Turns `data/<lang>_solutions.txt` and `data/<lang>_valid.txt` into C tables: solutions and sorted valid words (binary search). |
 | `tools/build_wordlists.py` | Rebuilds the `data/*.txt` files from the external sources (needs network, `make wordlists`). |
 
 Colours (green / yellow / grey / neutral) are not baked into the tiles: there
@@ -91,7 +87,7 @@ source/render.c      Mode 0: BG0 text, BG1 grid + keyboard, BG2 title pattern, c
 source/sound.c       PSG sound effects: step sequencer on square 1, square 2 and noise
 source/keyboard.c    cursor navigation over the virtual keyboard
 source/input.c       key polling, D-pad auto-repeat
-source/stats.c       SRAM read / write (statistics, in-progress challenge, RNG state, options)
+source/stats.c       SRAM read / write (statistics, RNG state, options)
 source/rng.c         xorshift32
 include/game_state.h state of one round (target, guesses, feedback, keyboard colours)
 include/stats.h      saved data layout
@@ -109,8 +105,8 @@ charblock 2 = pattern; screenblocks 28/29/30; the only sprite is the cursor.
   (needs an mGBA with the `--script` option, available in the 0.11
   development builds; use `--mgba` to point at it). The script reads the game
   state from RAM (addresses taken from the ELF), types words on the virtual
-  keyboard, wins a game, loses a game, checks the statistics, quits and
-  resumes a Challenge, plays Marathon runs in both difficulties, watches
+  keyboard, wins a game, loses a game, checks the statistics, cancels and
+  confirms a quit, plays Marathon runs in both difficulties, watches
   the sound registers, then reboots the ROM to
   verify SRAM persistence. Screenshots land in `tests/out/`.
 

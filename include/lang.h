@@ -20,14 +20,12 @@ typedef struct {
     u16 n_solutions;
     const char (*valid)[WORD_LEN];      // sorted, upper-case, no terminator
     u16 n_valid;
-    const u16 *challenge_seq;           // permutation of solution indices
     const char *kb_rows[KB_ROWS];       // key codes, row by row, NUL terminated
 
     // UI strings
     const char *press_start;
     const char *menu_language;
     const char *menu_classic;
-    const char *menu_challenge;
     const char *menu_marathon;
     const char *difficulty[DIFF_COUNT];
     const char *menu_stats;
@@ -36,7 +34,6 @@ typedef struct {
     const char *off;
     const char *menu_help;
     const char *mode_classic;
-    const char *mode_challenge;         // printf-style with the challenge number
     const char *msg_too_short;
     const char *msg_not_in_list;
     const char *win_msgs[MAX_GUESSES];  // by number of guesses used
@@ -47,10 +44,8 @@ typedef struct {
     const char *stats_streak;
     const char *stats_max_streak;
     const char *stats_distribution;
-    const char *stats_challenges;
     const char *stats_back;
     const char *result_prompt;          // "A: AGAIN  B: MENU"
-    const char *challenge_resumed;
     const char *marathon_score;
     const char *marathon_best;
     const char *marathon_over;

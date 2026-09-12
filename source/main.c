@@ -21,7 +21,6 @@ static KbCursor  kb;
 static u32       frames;            // since power-on; entropy for the RNG
 static u8        menu_lang;         // language shown/selected in the menu
 static int       menu_item;
-static bool      challenge_resumed;
 
 // Marathon run: chained random words, lives, high score per difficulty
 static struct {
@@ -33,7 +32,7 @@ static struct {
 
 static const u8 marathon_hp[DIFF_COUNT] = { 3, 5 };
 
-enum { MENU_LANG, MENU_CLASSIC, MENU_CHALLENGE, MENU_MARATHON, MENU_STATS, MENU_SOUND, MENU_COUNT };
+enum { MENU_LANG, MENU_CLASSIC, MENU_MARATHON, MENU_STATS, MENU_SOUND, MENU_COUNT };
 
 #define LANG() (&languages[game.lang])
 
@@ -144,7 +143,7 @@ static void draw_option_value(int ty, const char *value)
 static void draw_menu(void)
 {
     const Language *L = &languages[menu_lang];
-    static const int rows[MENU_COUNT] = { 5, 7, 9, 11, 13, 15 };
+    static const int rows[MENU_COUNT] = { 5, 8, 10, 12, 14 };
 
     txt_clear();
     cells_clear();
@@ -154,17 +153,6 @@ static void draw_menu(void)
     draw_option_value(rows[MENU_LANG], L->name);
 
     txt_puts(5, rows[MENU_CLASSIC], L->menu_classic, PAL_TXT_WHITE);
-
-    // Challenge: number of the next (or in-progress) challenge
-    u8 ch_lang = save.ch_active ? save.ch_lang : menu_lang;
-    txt_puts(5, rows[MENU_CHALLENGE], L->menu_challenge, PAL_TXT_WHITE);
-    int x = 5 + strlen(L->menu_challenge) + 1;
-    txt_puts(x, rows[MENU_CHALLENGE], "#", PAL_TXT_GRAY);
-    x += 1 + txt_uint(x + 1, rows[MENU_CHALLENGE], save.challenge_done[ch_lang] + 1, PAL_TXT_GRAY);
-    if (save.ch_active) {
-        txt_puts(x + 2, rows[MENU_CHALLENGE], languages[save.ch_lang].name, PAL_TXT_DIM);
-        txt_puts(x + 2 + strlen(languages[save.ch_lang].name), rows[MENU_CHALLENGE], "...", PAL_TXT_DIM);
-    }
 
     txt_puts(5, rows[MENU_MARATHON], L->menu_marathon, PAL_TXT_WHITE);
     draw_option_value(rows[MENU_MARATHON], L->difficulty[save.marathon_diff]);
@@ -215,7 +203,6 @@ static Screen menu_screen(void)
         } else if (a) {
             switch (menu_item) {
             case MENU_CLASSIC:   sfx_play(SFX_SELECT); game.mode = MODE_CLASSIC;   return SCR_GAME;
-            case MENU_CHALLENGE: sfx_play(SFX_SELECT); game.mode = MODE_CHALLENGE; return SCR_GAME;
             case MENU_MARATHON:  sfx_play(SFX_SELECT); game.mode = MODE_MARATHON;  return SCR_GAME;
             case MENU_STATS:     sfx_play(SFX_SELECT); return SCR_STATS;
             default: break;
@@ -248,39 +235,13 @@ static void random_word(u8 lang_id, u8 mode)
 
 static void start_game(u8 lang_id, u8 mode)
 {
-    challenge_resumed = false;
-
-    if (mode == MODE_CLASSIC) {
-        random_word(lang_id, MODE_CLASSIC);
-        return;
-    }
     if (mode == MODE_MARATHON) {
         marathon.difficulty = save.marathon_diff;
         marathon.hp_max = marathon.hp = marathon_hp[marathon.difficulty];
         marathon.score = 0;
         marathon.new_record = false;
-        random_word(lang_id, MODE_MARATHON);
-        return;
     }
-
-    // Challenge: at most one in progress, in the language it was started in.
-    if (save.ch_active) lang_id = save.ch_lang;
-    const Language *L = &languages[lang_id];
-    u16 n = save.challenge_done[lang_id];
-    u16 idx = L->challenge_seq[n % L->n_solutions];
-    game_init(&game, lang_id, MODE_CHALLENGE, L->solutions[idx]);
-    game.challenge_no = n + 1;
-
-    if (save.ch_active) {
-        for (int i = 0; i < save.ch_n_guesses; i++)
-            game_replay_guess(&game, save.ch_guesses[i]);
-        challenge_resumed = save.ch_n_guesses > 0;
-    } else {
-        save.ch_active = 1;
-        save.ch_lang = lang_id;
-        save.ch_n_guesses = 0;
-        stats_save();
-    }
+    random_word(lang_id, mode);
 }
 
 // Row 0: mode name, or "SCORE n" + hearts in Marathon
@@ -290,11 +251,6 @@ static void draw_mode_label(void)
     txt_clear_row(MSG_TY);
     if (game.mode == MODE_CLASSIC) {
         txt_center(MSG_TY, L->mode_classic, PAL_TXT_DIM);
-    } else if (game.mode == MODE_CHALLENGE) {
-        int len = strlen(L->mode_challenge);
-        int x = (SCREEN_TW - len - (game.challenge_no >= 100 ? 3 : game.challenge_no >= 10 ? 2 : 1)) / 2;
-        txt_puts(x, MSG_TY, L->mode_challenge, PAL_TXT_DIM);
-        txt_uint(x + len, MSG_TY, game.challenge_no, PAL_TXT_DIM);
     } else {
         txt_puts(1, MSG_TY, L->marathon_score, PAL_TXT_GRAY);
         txt_uint(2 + strlen(L->marathon_score), MSG_TY, marathon.score, PAL_TXT_WHITE);
@@ -352,18 +308,13 @@ static bool confirm_quit(void)
     }
 }
 
-// Classic / Challenge: record the result, show the verdict, wait a bit.
+// Classic: record the result, show the verdict, wait a bit.
 static void finish_game(void)
 {
     const Language *L = LANG();
     bool won = game.status == STATUS_WON;
 
     stats_record_result(won, game.n_guesses);
-    if (game.mode == MODE_CHALLENGE) {
-        save.ch_active = 0;
-        save.challenge_done[game.lang]++;
-        if (won) save.challenge_won++;
-    }
     stats_save();
 
     if (won) {
@@ -449,12 +400,7 @@ static Screen game_screen(void)
     update_cursor();
 
     int msg_timer = 0;
-    if (challenge_resumed) {
-        show_message(L->challenge_resumed, PAL_TXT_YELLOW);
-        msg_timer = 120;
-    } else {
-        draw_mode_label();
-    }
+    draw_mode_label();
 
     for (;;) {
         next_frame();
@@ -464,8 +410,7 @@ static Screen game_screen(void)
         if (input_hit(KEY_SELECT)) {
             msg_timer = 0;
             if (!confirm_quit()) continue;
-            // Challenge progress is already saved; a Marathon run ends here
-            if (game.mode == MODE_MARATHON) {
+            if (game.mode == MODE_MARATHON) {           // the run ends here
                 marathon_finish();
                 return SCR_MARATHON_RESULT;
             }
@@ -517,11 +462,6 @@ static Screen game_screen(void)
             break;
         default: {
             int row = game.n_guesses - 1;
-            if (game.mode == MODE_CHALLENGE) {
-                memcpy(save.ch_guesses[row], game.guesses[row], WORD_LEN);
-                save.ch_n_guesses = game.n_guesses;
-                stats_save();
-            }
             msg_timer = 0;
             reveal_row(row);
             render_keyboard(&game, L);
@@ -572,11 +512,8 @@ static void draw_stats(const Language *L, int ty, int highlight_row)
         txt_uint(5 + w, ty, save.dist[i], PAL_TXT_WHITE);
     }
 
-    ty += 2;
-    txt_puts(2, ty, L->stats_challenges, PAL_TXT_GRAY);
-    txt_uint(3 + strlen(L->stats_challenges), ty, save.challenge_won, PAL_TXT_WHITE);
-
     // marathon best scores, one line per difficulty
+    ty++;
     for (int d = 0; d < DIFF_COUNT; d++) {
         ty++;
         txt_puts(2, ty, L->menu_marathon, PAL_TXT_GRAY);

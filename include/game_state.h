@@ -12,7 +12,7 @@ typedef enum {
     FB_CORRECT,     // green: right letter, right position
 } Feedback;
 
-typedef enum { MODE_CLASSIC = 0, MODE_CHALLENGE = 1, MODE_MARATHON = 2 } GameMode;
+typedef enum { MODE_CLASSIC = 0, MODE_MARATHON = 1 } GameMode;
 
 typedef enum { DIFF_EASY = 0, DIFF_HARD = 1, DIFF_COUNT } Difficulty;   // Marathon
 
@@ -29,7 +29,6 @@ typedef struct {
     u8   cur_len;                           // letters typed in the current row
     char current[WORD_LEN];
     u8   key_state[26];                     // best Feedback seen per letter A-Z
-    u16  challenge_no;                      // 1-based, Challenge mode only
 } GameState;
 
 #endif

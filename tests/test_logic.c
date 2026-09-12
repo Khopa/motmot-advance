@@ -14,10 +14,9 @@ static int failures = 0;
 static const char words[][WORD_LEN] __attribute__((nonstring)) = {
     "ABBEY", "ALLEY", "APPLE", "CRANE", "EERIE", "LEVEL", "SPEED", "STEEL", "TESTS",
 };
-static const u16 seq[] = {0, 1, 2};
 static const Language lang = {
     .name = "TEST", .solutions = words, .n_solutions = 3,
-    .valid = words, .n_valid = sizeof words / sizeof words[0], .challenge_seq = seq,
+    .valid = words, .n_valid = sizeof words / sizeof words[0],
 };
 
 static void check_score(const char *guess, const char *target, const char *expect)

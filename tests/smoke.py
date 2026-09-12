@@ -37,7 +37,7 @@ LUA = r"""
 local ROM_OUT = "%(out)s"
 local GAME = %(game)d      -- GameState: lang(0) mode(1) status(2) target(3..7) n_guesses(8)
 local KB   = %(kb)d        -- KbCursor: row, col
-local SAVE = %(save)d      -- SaveData: magic(0..3) version(4) lang(5) sound(6) played(8..9) won(10..11) lost(12..13) streak(14..15) best(16..17)
+local SAVE = %(save)d      -- SaveData: magic(0..3) version(4) lang(5) sound(6) diff(7) played(8..9) won(10..11) lost(12..13) streak(14..15) best(16..17) marathon_best(70..73)
 local RUN  = %(run)d
 local MARATHON = %(marathon)d  -- difficulty(0) hp(1) hp_max(2) score(4..5)
 
@@ -127,31 +127,25 @@ local co = coroutine.create(function()
   shot("07_result")
   say("save.played = " .. u16(SAVE + 8) .. " won = " .. u16(SAVE + 10))
   press(K.B); wait(5)                         -- back to menu
-  press(K.DOWN); press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CLASSIC -> STATS
+  press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CLASSIC -> STATS
   shot("08_stats")
   press(K.B); wait(5)
-  press(K.UP); press(K.UP); press(K.UP); press(K.UP)   -- STATS -> LANGUAGE
+  press(K.UP); press(K.UP); press(K.UP)       -- STATS -> LANGUAGE
   press(K.RIGHT); wait(5)                     -- switch language
-  shot("09_menu_en")
-  press(K.DOWN); press(K.DOWN); press(K.A); wait(5)   -- CHALLENGE (English: started there in run 1)
-  say("challenge lang = " .. u8(GAME) .. " mode = " .. u8(GAME + 1) .. " n_guesses at entry = " .. u8(GAME + 8))
-  shot("10_challenge_en")
-  local ct = target()
-  local cd = (ct == "CRANE") and "SLATE" or "CRANE"
-  type_word(cd); press(K.START); wait(45)
-  say("challenge n_guesses after guess = " .. u8(GAME + 8))
-  press(K.SELECT); wait(3); press(K.A); wait(5)   -- quit (confirmed), progress saved
-  press(K.A); wait(5)                         -- re-enter the challenge
-  say("challenge n_guesses after resume = " .. u8(GAME + 8))
-  shot("11_challenge_resumed")
+  shot("09_menu_other_lang")
+  press(K.DOWN); press(K.A); wait(5)          -- CLASSIC in the other language
+  say("classic lang = " .. u8(GAME) .. " mode = " .. u8(GAME + 1))
+  shot("10_game_other_lang")
 
-  -- lose a classic game: too-short message, then six valid wrong words
+  -- quitting asks for confirmation
   press(K.SELECT); wait(3)
-  shot("12_quit_confirm")
+  shot("11_quit_confirm")
   press(K.B); wait(3)                         -- no, stay
   say("still playing after cancelled quit: mode = " .. u8(GAME + 1))
-  press(K.SELECT); wait(3); press(K.A); wait(5)   -- yes, quit
-  press(K.UP); press(K.A); wait(5)            -- menu item CHALLENGE -> CLASSIC
+  press(K.SELECT); wait(3); press(K.A); wait(5)   -- yes, quit -> menu (CLASSIC)
+
+  -- lose a classic game: too-short message, then six valid wrong words
+  press(K.A); wait(5)
   local lt = target()
   local pool = ({ [0] = {"TERRE", "PORTE", "TABLE", "CHIEN", "ROUGE", "BLANC", "MONDE"},
                   [1] = {"SLATE", "CRANE", "ABBEY", "ALLEY", "APPLE", "EERIE", "LEVEL"} })[u8(GAME)]
@@ -172,7 +166,7 @@ local co = coroutine.create(function()
 
   -- marathon, easy: find two words in a row, quit, check the high score
   press(K.B); wait(5)                         -- result -> menu (CLASSIC highlighted)
-  press(K.DOWN); press(K.DOWN)                -- MARATHON
+  press(K.DOWN)                               -- MARATHON
   while u8(SAVE + 7) ~= 0 do press(K.RIGHT) end   -- make sure difficulty = easy
   shot("15_menu_marathon")
   press(K.A); wait(5)
@@ -185,7 +179,7 @@ local co = coroutine.create(function()
   end
   press(K.SELECT); wait(3); press(K.A); wait(5)   -- quit the run
   shot("17_marathon_result")
-  say("marathon easy best = " .. u16(SAVE + 108))
+  say("marathon easy best = " .. u16(SAVE + 70))
   press(K.B); wait(5)                         -- menu
 
   -- marathon, hard: the third guess costs a life
@@ -202,7 +196,7 @@ local co = coroutine.create(function()
   end
   shot("18_marathon_hard")
   press(K.SELECT); wait(3); press(K.A); wait(5)
-  say("marathon hard best = " .. u16(SAVE + 110))
+  say("marathon hard best = " .. u16(SAVE + 72))
   press(K.B); wait(5)
   say("done")
 end)
@@ -258,7 +252,6 @@ def main():
         print(f"--- run {run} ---")
         print(log)
         boot = int(re.search(r"save.played at boot = (\d+)", log).group(1))
-        expect = run - 1                      # challenges/guesses carried over
         boot_expect = 2 * (run - 1)           # each run plays one win + one loss
         checks = [
             ("no script error", "ERROR" not in log),
@@ -270,10 +263,8 @@ def main():
             ("buzzer uses square 1 and noise", re.search(r"sound on error: sq1 = [1-9]\d* noise = [1-9]", log) is not None),
             ("game won in 2", "status = 1 n_guesses = 2" in log),
             (f"stats updated (played = {2 * run - 1}, won = {run})", f"save.played = {2 * run - 1} won = {run}" in log),
-            (f"challenge restored from SRAM ({expect} guess)", f"n_guesses at entry = {expect}" in log),
-            (f"challenge guess saved ({run})", f"after guess = {run}" in log),
-            (f"challenge resumed after quit ({run})", f"after resume = {run}" in log),
-            ("quit needs confirmation", "still playing after cancelled quit: mode = 1" in log),
+            ("language switch applies to the game", f"classic lang = {run % 2} mode = 0" in log),
+            ("quit needs confirmation", "still playing after cancelled quit: mode = 0" in log),
             ("game lost after 6 guesses", "lost: status = 2 n_guesses = 6" in log),
             ("marathon easy starts with 3 lives", "marathon easy: hp = 3/3 score = 0" in log),
             ("marathon easy: two words found", "marathon word 2 found: score = 2 hp = 3" in log),

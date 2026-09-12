@@ -6,7 +6,7 @@ Un jeu de lettres pour Game Boy Advance dans l'esprit de l'émission *Motus* :
 trouver un mot de 5 lettres en 6 essais, feedback vert / jaune / gris sur
 chaque lettre, clavier virtuel au pad, deux langues (français, anglais),
 effets sonores chiptune, statistiques sauvegardées en SRAM et un mode
-Challenge déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
+Marathon avec des vies et des records. Écrit en C avec libtonc, sans assembleur ni C++.
 
 | Titre | Menu | Partie | Marathon | Résultat |
 |---|---|---|---|---|
@@ -18,11 +18,6 @@ Challenge déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
   langue, son).
 - **Mode Classique** : mot tiré au hasard parmi ~500 mots courants, sans
   répéter les 8 derniers mots joués.
-- **Mode Challenge** : le challenge n° *n* est toujours le même mot (séquence
-  pré-mélangée embarquée, indexée par le compteur de challenges terminés
-  stocké en SRAM — pas besoin d'horloge). Un seul challenge en cours à la
-  fois : la partie est sauvegardée à chaque essai et reprise si on quitte
-  (SELECT) ou si on éteint la console.
 - **Mode Marathon** : des mots aléatoires enchaînés, avec des vies et un
   record sauvegardé par difficulté. Facile : 3 vies, un mot raté en coûte
   une. Difficile : 5 vies, chaque essai à partir du troisième en coûte une —
@@ -34,8 +29,7 @@ Challenge déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
   sur un mot inconnu, une note différente par couleur révélée, fanfare de
   victoire, jingle de défaite. Désactivables dans le menu (sauvegardé).
 - Statistiques persistantes (SRAM) : parties, victoires, série en cours,
-  meilleure série, répartition par nombre d'essais, challenges réussis,
-  records du Marathon.
+  meilleure série, répartition par nombre d'essais, records du Marathon.
 - Interface entièrement traduite dans la langue choisie.
 
 ## Contrôles
@@ -46,7 +40,7 @@ Challenge déterministe. Écrit en C avec libtonc, sans assembleur ni C++.
 | A | Saisir la lettre sélectionnée (ou activer Entrée / Effacer sur le clavier) |
 | B | Effacer la dernière lettre |
 | START | Valider le mot |
-| SELECT | Quitter la partie (avec confirmation ; un Challenge garde sa progression) |
+| SELECT | Quitter la partie (avec confirmation) |
 | Gauche / Droite (menu) | Modifier l'option sélectionnée (langue, difficulté du Marathon, son) |
 
 ## Compilation
@@ -78,7 +72,7 @@ Tout ce qui est généré l'est à la compilation, dans `build/gen/` :
 |---|---|
 | `tools/make_assets.py` | Dessine les images sources `assets/*.png` (PNG indexés) à partir de pixel-art ASCII : police 6×7 (A-Z, 0-9, ponctuation, icônes Entrée/Effacer, segment de barre), cases 16×16 de la grille et touches arrondies du clavier avec la lettre pré-composée, sprite curseur, motif de fond du titre. `make assets` pour les régénérer. |
 | `tools/png2gba.py` | Convertit un PNG en tuiles 4bpp + palette BGR555 sous forme de tableaux C. Option `--meta 2 2` (via `assets/<nom>.opts`) pour émettre les tuiles par métatuile 16×16. |
-| `tools/gen_wordlist.py` | Transforme `data/<langue>_solutions.txt` et `data/<langue>_valid.txt` en tableaux C : solutions, mots valides triés (recherche dichotomique), permutation fixe pour le mode Challenge. |
+| `tools/gen_wordlist.py` | Transforme `data/<langue>_solutions.txt` et `data/<langue>_valid.txt` en tableaux C : solutions et mots valides triés (recherche dichotomique). |
 | `tools/build_wordlists.py` | Reconstruit les fichiers `data/*.txt` depuis les sources externes (réseau nécessaire, `make wordlists`). |
 
 Les couleurs (vert / jaune / gris / neutre) ne sont pas dans les tuiles : une
@@ -94,7 +88,7 @@ source/render.c      Mode 0 : BG0 texte, BG1 grille + clavier, BG2 motif titre, 
 source/sound.c       effets sonores PSG : séquenceur à pas sur carré 1, carré 2 et bruit
 source/keyboard.c    navigation du curseur sur le clavier virtuel
 source/input.c       lecture des touches, auto-répétition du D-pad
-source/stats.c       lecture / écriture SRAM (statistiques, challenge en cours, état du RNG, options)
+source/stats.c       lecture / écriture SRAM (statistiques, état du RNG, options)
 source/rng.c         xorshift32
 include/game_state.h état d'une partie (mot cible, essais, feedback, clavier)
 include/stats.h      structure sauvegardée
@@ -112,8 +106,8 @@ charblock 2 = motif ; screenblocks 28/29/30 ; l'unique sprite est le curseur.
   (nécessite un mGBA avec l'option `--script`, disponible dans les builds de
   développement 0.11 : `--mgba` pour indiquer le chemin). Le script lit
   l'état du jeu en RAM (adresses tirées de l'ELF), tape des mots au clavier
-  virtuel, gagne une partie, en perd une, vérifie les statistiques, quitte et
-  reprend un Challenge, joue des Marathons dans les deux difficultés,
+  virtuel, gagne une partie, en perd une, vérifie les statistiques, annule
+  puis confirme une sortie, joue des Marathons dans les deux difficultés,
   surveille les registres son, puis redémarre la ROM
   pour vérifier la persistance SRAM. Les captures d'écran vont dans
   `tests/out/`.

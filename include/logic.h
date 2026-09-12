@@ -26,7 +26,7 @@ bool game_type_letter(GameState *g, char letter);   // 'A'..'Z'
 bool game_backspace(GameState *g);
 // Commit the current row; on success feedback/key_state/status are updated.
 SubmitResult game_submit(GameState *g, const Language *lang);
-// Re-apply a committed guess (used when resuming a saved Challenge).
+// Commit a guess without validation (used by the unit tests).
 void game_replay_guess(GameState *g, const char guess[WORD_LEN]);
 
 #endif
