@@ -6,11 +6,16 @@ T.run(function()
   T.check_eq(T.menu_lang(), T.LANG.FR, "French is preselected on a blank save")
   T.shot("language")
 
-  -- any direction toggles between the two languages
+  -- five languages, the list wraps both ways
   T.press(T.K.DOWN); T.check_eq(T.menu_lang(), T.LANG.EN, "DOWN selects English")
-  T.press(T.K.UP);   T.check_eq(T.menu_lang(), T.LANG.FR, "UP selects French again")
-  T.press(T.K.RIGHT); T.check_eq(T.menu_lang(), T.LANG.EN, "RIGHT toggles too")
-  T.press(T.K.LEFT);  T.check_eq(T.menu_lang(), T.LANG.FR, "LEFT toggles back")
+  T.press(T.K.DOWN); T.check_eq(T.menu_lang(), T.LANG.ES, "DOWN selects Spanish")
+  T.press(T.K.DOWN); T.check_eq(T.menu_lang(), T.LANG.DE, "DOWN selects German")
+  T.press(T.K.DOWN); T.check_eq(T.menu_lang(), T.LANG.IT, "DOWN selects Italian")
+  T.press(T.K.DOWN); T.check_eq(T.menu_lang(), T.LANG.FR, "DOWN wraps to French")
+  T.press(T.K.UP);   T.check_eq(T.menu_lang(), T.LANG.IT, "UP wraps to Italian")
+  T.press(T.K.RIGHT); T.check_eq(T.menu_lang(), T.LANG.FR, "RIGHT moves down the list too")
+  T.press(T.K.LEFT);  T.check_eq(T.menu_lang(), T.LANG.IT, "LEFT moves up")
+  T.press(T.K.DOWN)
 
   T.press(T.K.A); T.wait(3)
   T.check_eq(T.screen(), T.SCREEN.TITLE, "A confirms and shows the title")

@@ -39,7 +39,7 @@ GFX_NAMES := $(basename $(notdir $(wildcard assets/*.png)))
 GFX_SRCS  := $(patsubst %,$(GEN)/gfx_%.c,$(GFX_NAMES))
 GFX_HDRS  := $(patsubst %,$(GEN)/gfx_%.h,$(GFX_NAMES))
 # Word lists: data/<lang>_solutions.txt + data/<lang>_valid.txt -> wordlist_<lang>.c/.h
-LANGS     := en fr
+LANGS     := en fr es de it
 WL_SRCS   := $(patsubst %,$(GEN)/wordlist_%.c,$(LANGS))
 WL_HDRS   := $(patsubst %,$(GEN)/wordlist_%.h,$(LANGS))
 

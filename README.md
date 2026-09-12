@@ -4,8 +4,8 @@
 
 A word-guessing game for the Game Boy Advance in the spirit of the TV show
 *Motus*: find a 5-letter word in 6 tries with green / yellow / grey feedback
-on every letter, a D-pad driven virtual keyboard, two languages (French and
-English), chiptune sound effects, statistics saved to SRAM, a Marathon
+on every letter, a D-pad driven virtual keyboard, five languages (French,
+English, Spanish, German, Italian), chiptune sound effects, statistics saved to SRAM, a Marathon
 mode with lives and high scores, and a Time Attack mode with leaderboards. Written in C with libtonc — no assembly, no C++.
 
 | Title | Menu | Game | Marathon | Time Attack |
@@ -25,9 +25,10 @@ mode with lives and high scores, and a Time Attack mode with leaderboards. Writt
   through the reveals, a missed word costs 30 s. Each length has its own
   top-3 leaderboard with arcade-style initials, shown on the Records screen
   and next to each length when starting a run.
-- Guesses are validated against a large list (~8,700 English words,
-  ~6,600 French words; accents are stripped, as in the TV show).
-- AZERTY layout in French, QWERTY in English, with Enter / Backspace keys.
+- Guesses are validated against a large list per language (4,900 to 8,700
+  words; accents are stripped, German umlauts are written ae/oe/ue/ss).
+- AZERTY layout in French, QWERTZ in German, QWERTY elsewhere, with
+  Enter / Backspace keys.
 - Sound effects on the Game Boy tone generators: key clicks, buzzer on an
   unknown word, a different note for each revealed colour, win fanfare, loss
   jingle. Can be switched off in the menu (saved).
@@ -133,9 +134,14 @@ See [tests/README.md](tests/README.md).
   lemmas, part of speech and frequencies;
   [an-array-of-french-words](https://github.com/words/an-array-of-french-words)
   (MIT) to widen the accepted-word list.
+- Spanish and German: the Letterpress word lists
+  ([lorenbrichter/Words](https://github.com/lorenbrichter/Words), CC0) ranked
+  by OpenSubtitles frequency, first names removed.
+- Italian: [paroleitaliane](https://github.com/napolux/paroleitaliane) (MIT)
+  ranked by OpenSubtitles frequency.
 
-Solutions are the 500 most frequent everyday words (French: 5-letter nouns,
-adjectives, verbs and adverbs after accent stripping), minus a short block
-list.
+Solutions are the 500 most frequent everyday words of each language (French:
+5-letter nouns, adjectives, verbs and adverbs after accent stripping), minus
+a short block list per language.
 
 Code © 2026 Clément Perreau, MIT licence (see `LICENSE`). Published by Khopa.

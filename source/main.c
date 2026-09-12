@@ -139,9 +139,8 @@ static Screen title_screen(void)
 
 static void draw_lang_choice(void)
 {
-    static const int rows[LANG_COUNT] = { 10, 12 };
     for (int i = 0; i < LANG_COUNT; i++)
-        draw_menu_line(rows[i], languages[i].name, i == menu_lang);
+        draw_menu_line(7 + i * 2, languages[i].name, i == menu_lang);
 }
 
 // Shown once at boot; the language stays changeable in the options
@@ -149,15 +148,17 @@ static Screen lang_screen(void)
 {
     render_clear();
     draw_logo(1);
-    txt_center(6, "CHOISIR LA LANGUE", PAL_TXT_GRAY);
-    txt_center(7, "CHOOSE LANGUAGE", PAL_TXT_GRAY);
+    txt_center(5, "LANGUE / LANGUAGE", PAL_TXT_GRAY);
     txt_center(18, "A: OK", PAL_TXT_DIM);
     draw_lang_choice();
 
     for (;;) {
         next_frame();
-        if (input_nav(KEY_UP) || input_nav(KEY_DOWN) || input_nav(KEY_LEFT) || input_nav(KEY_RIGHT)) {
-            menu_lang = (menu_lang + 1) % LANG_COUNT;   // two languages: any direction toggles
+        int move = 0;
+        if (input_nav(KEY_UP) || input_nav(KEY_LEFT))    move = -1;
+        if (input_nav(KEY_DOWN) || input_nav(KEY_RIGHT)) move = 1;
+        if (move) {
+            menu_lang = (menu_lang + move + LANG_COUNT) % LANG_COUNT;
             sfx_play(SFX_MOVE);
             draw_lang_choice();
         }
@@ -256,8 +257,9 @@ static Screen options_screen(void)
             dirty = true;
         }
         if (input_hit(KEY_LEFT | KEY_RIGHT | KEY_A)) {
-            if (sub_item == OPT_LANGUAGE) {
-                menu_lang = (menu_lang + 1) % LANG_COUNT;
+            if (sub_item == OPT_LANGUAGE) {             // LEFT: previous, RIGHT / A: next
+                int step = input_hit(KEY_LEFT) ? LANG_COUNT - 1 : 1;
+                menu_lang = (menu_lang + step) % LANG_COUNT;
                 save.lang = menu_lang;
                 sfx_play(SFX_MOVE);
             } else {

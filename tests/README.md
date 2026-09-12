@@ -90,7 +90,7 @@ make emutest SCENARIO=06_quit
 
 | Scenario | Covers |
 |---|---|
-| `01_boot` | language screen first, toggling, title, START, menu defaults, blank-save defaults |
+| `01_boot` | language screen first, five languages with wrap-around, title, START, menu defaults, blank-save defaults |
 | `02_menu` | cursor wrap and auto-repeat, every entry opens its screen and B returns, records pages, options saved, mode-select cursors, title and back |
 | `03_keyboard` | cursor wrap, row changes, auto-repeat, 5-letter limit, B / delete key, enter key |
 | `04_classic_win` | too short + unknown word (buzzer), a valid guess and its colours, win in two, stats update, result screen, replay |
@@ -101,7 +101,7 @@ make emutest SCENARIO=06_quit
 | `09_marathon_gameover_easy` | three misses end the run with score 0 |
 | `10_time_attack` | clock runs and stops on the quit question, missed word = +30 s with the clock paused, 5 words finished, rank, initials entry (UP/DOWN/A/START), leaderboard, replay/abandon, records and mode-select display, a slower run ranks second |
 | `11_sound` | effects on: menu tick, clicks, reveal notes; off: silence everywhere; setting kept |
-| `12_language` | English: QWERTY, English list; back to French/AZERTY |
+| `12_language` | English, Spanish, German (QWERTZ) and Italian: layout, own word list accepts / French word rejected; back to French/AZERTY |
 | `13_persistence` | reboot on the save left by the previous scenarios (stats, options, marathon bests, time attack record and initials) |
 | `14_monkey` | 30000 frames of random input: no freeze, PC always in ROM/IWRAM/BIOS |
 

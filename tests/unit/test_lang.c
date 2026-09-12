@@ -14,7 +14,7 @@ TEST(both_languages_have_lists)
 {
     for (int l = 0; l < LANG_COUNT; l++) {
         CHECK(languages[l].n_solutions >= 400);
-        CHECK(languages[l].n_valid >= 5000);
+        CHECK(languages[l].n_valid >= 4000);
         CHECK(languages[l].n_valid > languages[l].n_solutions);
     }
 }

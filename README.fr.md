@@ -4,8 +4,8 @@
 
 Un jeu de lettres pour Game Boy Advance dans l'esprit de l'émission *Motus* :
 trouver un mot de 5 lettres en 6 essais, feedback vert / jaune / gris sur
-chaque lettre, clavier virtuel au pad, deux langues (français, anglais),
-effets sonores chiptune, statistiques sauvegardées en SRAM, un mode
+chaque lettre, clavier virtuel au pad, cinq langues (français, anglais,
+espagnol, allemand, italien), effets sonores chiptune, statistiques sauvegardées en SRAM, un mode
 Marathon avec des vies et des records, et un mode Time Attack avec classements. Écrit en C avec libtonc, sans assembleur ni C++.
 
 | Titre | Menu | Partie | Marathon | Time Attack |
@@ -26,9 +26,10 @@ Marathon avec des vies et des records, et un mode Time Attack avec classements. 
   pendant les révélations, un mot raté coûte 30 s. Chaque longueur a son
   classement (top 3) avec initiales façon arcade, visible dans l'écran
   Records et en face de chaque longueur au lancement.
-- Validation des mots contre une liste large (~8 700 mots en anglais,
-  ~6 600 en français, accents retirés comme dans l'émission).
-- Clavier AZERTY en français, QWERTY en anglais, avec touches Entrée / Effacer.
+- Validation des mots contre une liste large par langue (4 900 à 8 700 mots ;
+  accents retirés, umlauts allemands écrits ae/oe/ue/ss).
+- Clavier AZERTY en français, QWERTZ en allemand, QWERTY ailleurs, avec
+  touches Entrée / Effacer.
 - Effets sonores sur les générateurs de son Game Boy : clic de touche, buzzer
   sur un mot inconnu, une note différente par couleur révélée, fanfare de
   victoire, jingle de défaite. Désactivables dans le menu (sauvegardé).
@@ -134,9 +135,14 @@ Détails dans [tests/README.md](tests/README.md) (en anglais).
   formes, lemmes, catégories grammaticales et fréquences ;
   [an-array-of-french-words](https://github.com/words/an-array-of-french-words)
   (MIT) pour élargir la liste des mots acceptés.
+- Espagnol et allemand : listes de mots de Letterpress
+  ([lorenbrichter/Words](https://github.com/lorenbrichter/Words), CC0)
+  classées par fréquence OpenSubtitles, prénoms exclus.
+- Italien : [paroleitaliane](https://github.com/napolux/paroleitaliane) (MIT)
+  classé par fréquence OpenSubtitles.
 
-Les solutions sont les 500 mots courants les plus fréquents (français : noms,
-adjectifs, verbes, adverbes de 5 lettres après suppression des accents), moins
-une courte liste d'exclusion.
+Les solutions sont les 500 mots courants les plus fréquents de chaque langue
+(français : noms, adjectifs, verbes, adverbes de 5 lettres après suppression
+des accents), moins une courte liste d'exclusion par langue.
 
 Code © 2026 Clément Perreau, licence MIT (voir `LICENSE`). Publié par Khopa.

@@ -5,7 +5,7 @@
 #include "common.h"
 #include "game_state.h"
 
-typedef enum { LANG_FR = 0, LANG_EN = 1, LANG_COUNT } LangId;
+typedef enum { LANG_FR = 0, LANG_EN, LANG_ES, LANG_DE, LANG_IT, LANG_COUNT } LangId;
 
 // Special key codes used in keyboard layouts (also glyph codes in the font)
 #define KEY_ENTER 0x01

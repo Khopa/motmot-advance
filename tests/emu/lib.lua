@@ -28,7 +28,7 @@ T.SCREEN = { TITLE = 0, LANG = 1, MENU = 2, OPTIONS = 3, RECORDS = 4, MODE_SELEC
              GAME = 6, RESULT = 7, MARATHON_RESULT = 8, TA_RESULT = 9, STATS = 10 }
 T.MENU   = { CLASSIC = 0, MARATHON = 1, TIME_ATTACK = 2, RECORDS = 3, STATS = 4, OPTIONS = 5, COUNT = 6 }
 T.OPT    = { LANGUAGE = 0, SOUND = 1, COUNT = 2 }
-T.LANG   = { FR = 0, EN = 1 }
+T.LANG   = { FR = 0, EN = 1, ES = 2, DE = 3, IT = 4, COUNT = 5 }
 T.MODE   = { CLASSIC = 0, MARATHON = 1, TIME_ATTACK = 2 }
 T.TA_WORDS = { [0] = 5, [1] = 10, [2] = 15 }          -- ta_word_counts
 T.TA_PENALTY = 30 * 60
@@ -38,8 +38,11 @@ T.FB     = { NONE = 0, ABSENT = 1, PRESENT = 2, CORRECT = 3 }
 
 -- keyboard layouts, as in lang.c; \1 = enter key, \2 = delete key
 T.LAYOUT = {
-  [0] = { "AZERTYUIOP", "QSDFGHJKLM", "\1WXCVBN\2" },
-  [1] = { "QWERTYUIOP", "ASDFGHJKL",  "\1ZXCVBNM\2" },
+  [0] = { "AZERTYUIOP", "QSDFGHJKLM", "\1WXCVBN\2" },   -- FR
+  [1] = { "QWERTYUIOP", "ASDFGHJKL",  "\1ZXCVBNM\2" },  -- EN
+  [2] = { "QWERTYUIOP", "ASDFGHJKL",  "\1ZXCVBNM\2" },  -- ES
+  [3] = { "QWERTZUIOP", "ASDFGHJKL",  "\1YXCVBNM\2" },  -- DE
+  [4] = { "QWERTYUIOP", "ASDFGHJKL",  "\1ZXCVBNM\2" },  -- IT
 }
 -- valid words per language (all in data/<lang>_valid.txt), used as wrong guesses
 T.WORDS = {
@@ -47,6 +50,9 @@ T.WORDS = {
           "SUCRE", "POMME", "NOIRE", "ARBRE", "FLEUR", "PIANO", "TIGRE", "LUNDI", "MARDI", "JEUDI" },
   [1] = { "SLATE", "CRANE", "ABBEY", "ALLEY", "APPLE", "EERIE", "LEVEL", "HOUSE", "WATER", "MONEY", "NIGHT", "WORLD",
           "MUSIC", "HEART", "PHONE", "BLOOD", "CHILD", "TRUTH", "POWER", "LIGHT", "BLACK", "WHITE" },
+  [2] = { "MUNDO", "NOCHE", "GENTE", "PADRE", "MADRE", "LUGAR", "NUEVO", "AMIGO", "MUJER", "CLARO", "TENER", "COSAS" },
+  [3] = { "NICHT", "HABEN", "LEBEN", "NACHT", "LEUTE", "VATER", "LIEBE", "MUSIK", "STADT", "FRAGE", "LICHT", "TISCH" },
+  [4] = { "TEMPO", "MONDO", "NOTTE", "PADRE", "MADRE", "AMICO", "FORZA", "CUORE", "ACQUA", "CORPO", "FESTA", "LIBRO" },
 }
 
 -- timings (frames) taken from main.c
@@ -184,7 +190,7 @@ end
 function T.boot(lang)
   T.wait(20)
   T.check_eq(T.screen(), T.SCREEN.LANG, "boot shows the language screen")
-  for _ = 1, 3 do
+  for _ = 1, T.LANG.COUNT do
     if T.menu_lang() == lang then break end
     T.press(K.DOWN)
   end
@@ -221,7 +227,7 @@ end
 function T.option_set(opt, reader, value)
   if T.screen() ~= T.SCREEN.OPTIONS then T.menu_start(T.MENU.OPTIONS) end
   T.sub_go(opt, T.OPT.COUNT)
-  for _ = 1, 4 do
+  for _ = 1, T.LANG.COUNT do
     if reader() == value then break end
     T.press(K.RIGHT)
   end
