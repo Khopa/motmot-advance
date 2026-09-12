@@ -34,15 +34,23 @@ LIBS     := -L$(DEVKITPRO)/libtonc/lib -ltonc
 GFX_NAMES := $(basename $(notdir $(wildcard assets/*.png)))
 GFX_SRCS  := $(patsubst %,$(GEN)/gfx_%.c,$(GFX_NAMES))
 GFX_HDRS  := $(patsubst %,$(GEN)/gfx_%.h,$(GFX_NAMES))
+# Word lists: data/<lang>_solutions.txt + data/<lang>_valid.txt -> wordlist_<lang>.c/.h
+LANGS     := en fr
+WL_SRCS   := $(patsubst %,$(GEN)/wordlist_%.c,$(LANGS))
+WL_HDRS   := $(patsubst %,$(GEN)/wordlist_%.h,$(LANGS))
 
 SRCS := $(wildcard source/*.c)
 OBJS := $(patsubst source/%.c,$(BUILD)/%.o,$(SRCS)) \
-        $(patsubst $(GEN)/%.c,$(BUILD)/%.o,$(GFX_SRCS))
+        $(patsubst $(GEN)/%.c,$(BUILD)/%.o,$(GFX_SRCS) $(WL_SRCS))
 
-.PHONY: all clean run gen assets
+.PHONY: all clean run gen assets wordlists
 all: $(BUILD)/$(TARGET).gba
 
-gen: $(GFX_SRCS)
+gen: $(GFX_SRCS) $(WL_SRCS)
+
+# Refresh data/*.txt from the external word lists (needs network)
+wordlists:
+	$(PYTHON) tools/build_wordlists.py
 
 # Redraw the source PNGs from the ASCII art in tools/make_assets.py
 assets:
@@ -57,7 +65,7 @@ $(BUILD)/$(TARGET).elf: $(OBJS)
 	$(CC) $(LDFLAGS) $^ $(LIBS) -o $@
 
 # Game sources depend on every generated header (cheap, keeps deps simple)
-$(BUILD)/%.o: source/%.c $(GFX_HDRS) | $(BUILD)
+$(BUILD)/%.o: source/%.c $(GFX_HDRS) $(WL_HDRS) | $(BUILD)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD)/%.o: $(GEN)/%.c | $(BUILD)
@@ -65,6 +73,9 @@ $(BUILD)/%.o: $(GEN)/%.c | $(BUILD)
 
 $(GEN)/gfx_%.c $(GEN)/gfx_%.h: assets/%.png tools/png2gba.py | $(GEN)
 	$(PYTHON) tools/png2gba.py $< -o $(GEN)/gfx_$* $(shell cat assets/$*.opts 2>/dev/null)
+
+$(GEN)/wordlist_%.c $(GEN)/wordlist_%.h: data/%_solutions.txt data/%_valid.txt tools/gen_wordlist.py | $(GEN)
+	$(PYTHON) tools/gen_wordlist.py $* data/$*_solutions.txt data/$*_valid.txt -o $(GEN)/wordlist_$*
 
 $(BUILD) $(GEN):
 	mkdir -p $@
