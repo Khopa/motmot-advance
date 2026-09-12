@@ -4,7 +4,7 @@
 
 Un jeu de lettres pour la Game Boy Advance.
 
-![](assets/market/Mot.Mot.Advance-image.png)
+![](assets/market/Mot.Mot.Advance-thumb.png)
 
 | Titre | Menu | Partie | Marathon | Time Attack |
 |---|---|---|---|---|
