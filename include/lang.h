@@ -22,22 +22,50 @@ typedef struct {
     u16 n_valid;
     const char *kb_rows[KB_ROWS];       // key codes, row by row, NUL terminated
 
-    // UI strings
+    // --- UI strings (font character set only: A-Z 0-9 ! ? : . - / % > < # ' ,)
     const char *press_start;
-    const char *menu_language;
+    // main menu
     const char *menu_classic;
     const char *menu_marathon;
-    const char *difficulty[DIFF_COUNT];
+    const char *menu_time_attack;
+    const char *menu_records;
     const char *menu_stats;
-    const char *menu_sound;
+    const char *menu_options;
+    const char *menu_help;              // "A: OK  B: BACK"
+    // options
+    const char *options_title;
+    const char *opt_language;
+    const char *opt_sound;
     const char *on;
     const char *off;
-    const char *menu_help;
+    // mode selection
+    const char *difficulty[DIFF_COUNT];
+    const char *words;                  // "WORDS" (after a number)
+    const char *best;                   // "BEST"
+    const char *select_help;            // "A: START  B: BACK"
+    // in game
     const char *mode_classic;
+    const char *score;                  // Marathon status line
+    const char *word;                   // Time Attack status line: "WORD 3/10"
     const char *msg_too_short;
     const char *msg_not_in_list;
     const char *win_msgs[MAX_GUESSES];  // by number of guesses used
     const char *lose_msg;               // followed by the target word
+    const char *game_help;
+    const char *quit_confirm;           // "QUIT?  A: YES  B: NO"
+    // results
+    const char *result_prompt;          // "A: PLAY AGAIN  B: MENU"
+    const char *marathon_over;
+    const char *new_record;
+    const char *ta_done;                // "TIME ATTACK COMPLETE"
+    const char *time;                   // "TIME"
+    const char *penalties;              // "PENALTIES"
+    const char *enter_initials;
+    const char *initials_help;          // "UP/DOWN: LETTER  A: NEXT"
+    // records
+    const char *records_title;
+    const char *records_help;           // "</>: PAGE  B: BACK"
+    // statistics
     const char *stats_title;
     const char *stats_played;
     const char *stats_win_rate;
@@ -45,13 +73,6 @@ typedef struct {
     const char *stats_max_streak;
     const char *stats_distribution;
     const char *stats_back;
-    const char *result_prompt;          // "A: AGAIN  B: MENU"
-    const char *marathon_score;
-    const char *marathon_best;
-    const char *marathon_over;
-    const char *new_record;
-    const char *quit_confirm;           // "quit? A: yes  B: no"
-    const char *game_help;              // controls hint in game
 } Language;
 
 extern const Language languages[LANG_COUNT];

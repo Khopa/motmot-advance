@@ -92,7 +92,8 @@ run: $(BUILD)/$(TARGET).gba
 # ---------------------------------------------------------------------------
 # Host unit tests: the game modules below compile on the PC against
 # tests/unit/host_shim.h (fake registers and SRAM).
-UNIT_GAME_SRCS := source/logic.c source/keyboard.c source/rng.c source/stats.c                   source/sound.c source/lang.c
+UNIT_GAME_SRCS := source/logic.c source/keyboard.c source/rng.c source/stats.c \
+                  source/sound.c source/lang.c source/time_attack.c
 UNIT_SRCS := $(wildcard tests/unit/*.c) $(UNIT_GAME_SRCS) $(WL_SRCS)
 UNIT_FLAGS := -std=gnu11 -Wall -Wextra -O1 -g -DHOST_TEST -Iinclude -Itests/unit -I$(GEN)
 

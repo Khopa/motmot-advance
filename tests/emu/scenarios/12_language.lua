@@ -1,7 +1,7 @@
 -- Switching to English: QWERTY layout, English word list, and back.
 T.run(function()
   T.boot(T.LANG.FR)
-  T.menu_set(T.MENU.LANG, function() return T.save().lang end, T.LANG.EN)
+  T.set_language(T.LANG.EN)
   T.shot("menu_en")
   T.menu_start(T.MENU.CLASSIC)
   T.check_eq(T.game().lang, T.LANG.EN, "game in English")
@@ -17,7 +17,7 @@ T.run(function()
   T.shot("game_en")
   T.quit(true)
 
-  T.menu_set(T.MENU.LANG, function() return T.save().lang end, T.LANG.FR)
+  T.set_language(T.LANG.FR)
   T.menu_start(T.MENU.CLASSIC)
   T.check_eq(T.game().lang, T.LANG.FR, "game in French again")
   T.press(T.K.A)

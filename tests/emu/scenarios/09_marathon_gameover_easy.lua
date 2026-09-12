@@ -4,8 +4,7 @@
 T.run(function()
   T.boot(T.LANG.FR)
   local best = T.save().marathon_best[0]
-  T.menu_set(T.MENU.MARATHON, function() return T.save().marathon_diff end, T.DIFF.EASY)
-  T.press(T.K.A); T.wait(3)
+  T.start_marathon(T.DIFF.EASY)
   for life = 3, 1, -1 do
     T.check_eq(T.marathon().hp, life, "lives before the word: " .. life)
     local used = {}

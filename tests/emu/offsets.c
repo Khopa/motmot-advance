@@ -6,6 +6,7 @@
 #include "game_state.h"
 #include "keyboard.h"
 #include "stats.h"
+#include "time_attack.h"
 
 #define P(prefix, type, field) printf(#prefix "." #field "=%zu\n", offsetof(type, field))
 
@@ -38,6 +39,20 @@ int main(void)
     P(save, SaveData, max_streak);
     P(save, SaveData, dist);
     P(save, SaveData, marathon_best);
+    P(save, SaveData, ta_board);
+    P(save, SaveData, initials);
+    P(save, SaveData, ta_length);
+    P(ta, TimeAttackState, length_idx);
+    P(ta, TimeAttackState, total);
+    P(ta, TimeAttackState, done);
+    P(ta, TimeAttackState, missed);
+    P(ta, TimeAttackState, frames);
+    P(ta, TimeAttackState, running);
+    P(ta, TimeAttackState, rank);
+    P(record, TimeRecord, frames);
+    P(record, TimeRecord, initials);
+    P(record, TimeRecord, used);
+    printf("sizeof.TimeRecord=%zu\n", sizeof(TimeRecord));
     printf("sizeof.SaveData=%zu\n", sizeof(SaveData));
     return 0;
 }

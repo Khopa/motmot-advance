@@ -2,8 +2,7 @@
 -- the run ends when the lives are gone (game over screen, record saved).
 T.run(function()
   T.boot(T.LANG.FR)
-  T.menu_set(T.MENU.MARATHON, function() return T.save().marathon_diff end, T.DIFF.HARD)
-  T.press(T.K.A); T.wait(3)
+  T.start_marathon(T.DIFF.HARD)
   local m = T.marathon()
   T.check_eq(m.difficulty, T.DIFF.HARD, "hard difficulty")
   T.check_eq(m.hp .. "/" .. m.hp_max, "5/5", "five lives")

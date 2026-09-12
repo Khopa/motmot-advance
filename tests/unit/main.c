@@ -44,6 +44,7 @@ void run_rng(void);
 void run_stats(void);
 void run_sound(void);
 void run_lang(void);
+void run_time_attack(void);
 
 int main(int argc, char **argv)
 {
@@ -58,6 +59,7 @@ int main(int argc, char **argv)
     run_stats();
     run_sound();
     run_lang();
+    run_time_attack();
     printf("\n%d checks, %d failure(s)\n", test_checks, test_failures);
     return test_failures != 0;
 }

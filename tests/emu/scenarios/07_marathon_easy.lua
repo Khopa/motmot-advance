@@ -2,9 +2,12 @@
 -- words found, quitting records the high score, replay resets the run.
 T.run(function()
   T.boot(T.LANG.FR)
-  T.menu_set(T.MENU.MARATHON, function() return T.save().marathon_diff end, T.DIFF.EASY)
+  T.menu_start(T.MENU.MARATHON)
+  T.check_eq(T.screen(), T.SCREEN.MODE_SELECT, "difficulty selection first")
+  T.sub_go(T.DIFF.EASY, 2)
   T.press(T.K.A); T.wait(3)
   T.check_eq(T.screen(), T.SCREEN.GAME, "marathon game screen")
+  T.check_eq(T.save().marathon_diff, T.DIFF.EASY, "chosen difficulty is saved")
   local m = T.marathon()
   T.check_eq(T.game().mode, T.MODE.MARATHON, "mode is marathon")
   T.check_eq(m.difficulty, T.DIFF.EASY, "easy difficulty")

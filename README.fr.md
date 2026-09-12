@@ -5,23 +5,27 @@
 Un jeu de lettres pour Game Boy Advance dans l'esprit de l'émission *Motus* :
 trouver un mot de 5 lettres en 6 essais, feedback vert / jaune / gris sur
 chaque lettre, clavier virtuel au pad, deux langues (français, anglais),
-effets sonores chiptune, statistiques sauvegardées en SRAM et un mode
-Marathon avec des vies et des records. Écrit en C avec libtonc, sans assembleur ni C++.
+effets sonores chiptune, statistiques sauvegardées en SRAM, un mode
+Marathon avec des vies et des records, et un mode Time Attack avec classements. Écrit en C avec libtonc, sans assembleur ni C++.
 
-| Titre | Menu | Partie | Marathon | Résultat |
+| Titre | Menu | Partie | Marathon | Time Attack |
 |---|---|---|---|---|
-| ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/marathon.png) | ![](docs/result.png) |
+| ![](docs/title.png) | ![](docs/menu.png) | ![](docs/game.png) | ![](docs/marathon.png) | ![](docs/time_attack.png) |
 
 ## Fonctionnalités
 
-- Choix de la langue au démarrage, écran titre, menu (mode, statistiques,
-  langue, son).
+- Choix de la langue au démarrage, écran titre, menu principal (Classique,
+  Marathon, Time Attack, Records, Statistiques, Options).
 - **Mode Classique** : mot tiré au hasard parmi ~500 mots courants, sans
   répéter les 8 derniers mots joués.
 - **Mode Marathon** : des mots aléatoires enchaînés, avec des vies et un
   record sauvegardé par difficulté. Facile : 3 vies, un mot raté en coûte
   une. Difficile : 5 vies, chaque essai à partir du troisième en coûte une —
   il faut trouver vite.
+- **Time Attack** : 5, 10 ou 15 mots le plus vite possible ; le chrono tourne
+  pendant les révélations, un mot raté coûte 30 s. Chaque longueur a son
+  classement (top 3) avec initiales façon arcade, visible dans l'écran
+  Records et en face de chaque longueur au lancement.
 - Validation des mots contre une liste large (~8 700 mots en anglais,
   ~6 600 en français, accents retirés comme dans l'émission).
 - Clavier AZERTY en français, QWERTY en anglais, avec touches Entrée / Effacer.
@@ -29,7 +33,8 @@ Marathon avec des vies et des records. Écrit en C avec libtonc, sans assembleur
   sur un mot inconnu, une note différente par couleur révélée, fanfare de
   victoire, jingle de défaite. Désactivables dans le menu (sauvegardé).
 - Statistiques persistantes (SRAM) : parties, victoires, série en cours,
-  meilleure série, répartition par nombre d'essais, records du Marathon.
+  meilleure série, répartition par nombre d'essais, records du Marathon,
+  classements Time Attack.
 - Interface entièrement traduite dans la langue choisie.
 
 ## Contrôles
@@ -40,8 +45,8 @@ Marathon avec des vies et des records. Écrit en C avec libtonc, sans assembleur
 | A | Saisir la lettre sélectionnée (ou activer Entrée / Effacer sur le clavier) |
 | B | Effacer la dernière lettre |
 | START | Valider le mot |
-| SELECT | Quitter la partie (avec confirmation) |
-| Gauche / Droite (menu) | Modifier l'option sélectionnée (langue, difficulté du Marathon, son) |
+| SELECT | Quitter la partie (avec confirmation ; le chrono Time Attack s'arrête pendant la question) |
+| Gauche / Droite | Modifier une option, tourner les pages des Records, passer d'une initiale à l'autre |
 
 ## Compilation
 
@@ -82,7 +87,7 @@ seule tuile par lettre, colorée par bank de palette (`SE_PALBANK`).
 ## Architecture
 
 ```
-source/main.c        boucle de jeu, machine à états : langue / titre / menu / jeu / résultat / stats
+source/main.c        boucle de jeu et écrans : langue / titre / menu / options / records / sélection de mode / jeu / résultats / stats
 source/logic.c       règles du jeu (score avec lettres répétées, validation, saisie) — sans dépendance matérielle
 source/lang.c        table des langues : listes de mots, disposition clavier, textes
 source/render.c      Mode 0 : BG0 texte, BG1 grille + clavier, BG2 motif titre, sprite curseur
@@ -91,6 +96,7 @@ source/keyboard.c    navigation du curseur sur le clavier virtuel
 source/input.c       lecture des touches, auto-répétition du D-pad
 source/stats.c       lecture / écriture SRAM (statistiques, état du RNG, options)
 source/rng.c         xorshift32
+source/time_attack.c format du chrono et classements (pur, testé sur PC)
 include/game_state.h état d'une partie (mot cible, essais, feedback, clavier)
 include/stats.h      structure sauvegardée
 ```
@@ -102,15 +108,15 @@ charblock 2 = motif ; screenblocks 28/29/30 ; l'unique sprite est le curseur.
 
 Détails dans [tests/README.md](tests/README.md) (en anglais).
 
-- `make test` — 86 tests unitaires sur PC : les modules du jeu (règles,
-  clavier, RNG, persistance SRAM, séquenceur son, tables de langue et listes
-  de mots) sont compilés avec `gcc` contre un shim qui remplace les registres
+- `make test` — 101 tests unitaires sur PC : les modules du jeu (règles,
+  clavier, RNG, persistance SRAM, séquenceur son, classements Time Attack,
+  tables de langue et listes de mots) sont compilés avec `gcc` contre un shim qui remplace les registres
   GBA et la SRAM par de la mémoire ordinaire.
-- `make emutest` — 13 scénarios joués dans mGBA par des scripts Lua
+- `make emutest` — 14 scénarios joués dans mGBA par des scripts Lua
   (démarrage, menu, clavier, victoire/défaite en Classique, confirmation de
-  sortie, Marathon facile/difficile/game over, option son, changement de
-  langue, persistance SRAM après redémarrage, entrées aléatoires pendant
-  30 000 frames). Les assertions lisent la RAM de la ROM ; l'émulateur tourne
+  sortie, Marathon facile/difficile/game over, Time Attack avec initiales et
+  classements, option son, changement de langue, persistance SRAM après
+  redémarrage, entrées aléatoires pendant 30 000 frames). Les assertions lisent la RAM de la ROM ; l'émulateur tourne
   sans limitation de vitesse, la suite complète prend ~15 s. Nécessite un
   build de développement mGBA 0.11 (`--script`).
 - `make check` — les deux.

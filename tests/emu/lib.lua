@@ -12,6 +12,9 @@
 --     T.check_eq(T.game().n_guesses, 1, "guess accepted")
 --   end)
 --
+-- Other entry points: T.start_marathon(diff), T.start_time_attack(len_idx),
+-- T.set_language(lang), T.set_sound(on) (through the options screen).
+--
 -- Every T.check* call writes a PASS / FAIL line to the scenario log; run.py
 -- turns those into the summary. Reading the ROM's memory (game state, save
 -- data, cursor) is the primary way to assert; screenshots are for humans.
@@ -21,10 +24,14 @@ local K = C.GBA_KEY
 T.K = K
 
 -- --- constants mirrored from the C enums (main.c / game_state.h) ------------
-T.SCREEN = { TITLE = 0, LANG = 1, MENU = 2, GAME = 3, RESULT = 4, MARATHON_RESULT = 5, STATS = 6 }
-T.MENU   = { LANG = 0, CLASSIC = 1, MARATHON = 2, STATS = 3, SOUND = 4, COUNT = 5 }
+T.SCREEN = { TITLE = 0, LANG = 1, MENU = 2, OPTIONS = 3, RECORDS = 4, MODE_SELECT = 5,
+             GAME = 6, RESULT = 7, MARATHON_RESULT = 8, TA_RESULT = 9, STATS = 10 }
+T.MENU   = { CLASSIC = 0, MARATHON = 1, TIME_ATTACK = 2, RECORDS = 3, STATS = 4, OPTIONS = 5, COUNT = 6 }
+T.OPT    = { LANGUAGE = 0, SOUND = 1, COUNT = 2 }
 T.LANG   = { FR = 0, EN = 1 }
-T.MODE   = { CLASSIC = 0, MARATHON = 1 }
+T.MODE   = { CLASSIC = 0, MARATHON = 1, TIME_ATTACK = 2 }
+T.TA_WORDS = { [0] = 5, [1] = 10, [2] = 15 }          -- ta_word_counts
+T.TA_PENALTY = 30 * 60
 T.STATUS = { PLAYING = 0, WON = 1, LOST = 2 }
 T.DIFF   = { EASY = 0, HARD = 1 }
 T.FB     = { NONE = 0, ABSENT = 1, PRESENT = 2, CORRECT = 3 }
@@ -87,7 +94,9 @@ local S, O = CFG.sym, CFG.off
 
 function T.screen() return u8(S.current_screen) end
 function T.frames() return u32(S.frames) end
-function T.menu_item() return u8(S.menu_item) end     -- an int: low byte is enough
+function T.menu_item() return u8(S.menu_item) end     -- ints: the low byte is enough
+function T.sub_item() return u8(S.sub_item) end
+function T.records_page() return u8(S.records_page) end
 function T.menu_lang() return u8(S.menu_lang) end
 
 function T.game()
@@ -120,6 +129,22 @@ end
 
 function T.kb() return { row = u8(S.kb + O["kb.row"]), col = u8(S.kb + O["kb.col"]) } end
 
+function T.time_attack()
+  local t = S.ta
+  local rank = u8(t + O["ta.rank"])
+  return {
+    length_idx = u8(t + O["ta.length_idx"]), total = u8(t + O["ta.total"]), done = u8(t + O["ta.done"]),
+    missed = u8(t + O["ta.missed"]), frames = u32(t + O["ta.frames"]), running = u8(t + O["ta.running"]) ~= 0,
+    rank = rank >= 128 and rank - 256 or rank,
+  }
+end
+
+local function record_at(addr)
+  local ini = ""
+  for i = 0, 2 do ini = ini .. string.char(u8(addr + O["record.initials"] + i)) end
+  return { frames = u32(addr + O["record.frames"]), initials = ini, used = u8(addr + O["record.used"]) ~= 0 }
+end
+
 function T.save()
   local s = S.save
   local dist = {}
@@ -130,6 +155,16 @@ function T.save()
     played = u16(s + O["save.played"]), won = u16(s + O["save.won"]), lost = u16(s + O["save.lost"]),
     streak = u16(s + O["save.streak"]), max_streak = u16(s + O["save.max_streak"]), dist = dist,
     marathon_best = { [0] = u16(s + O["save.marathon_best"]), [1] = u16(s + O["save.marathon_best"] + 2) },
+    ta_length = u8(s + O["save.ta_length"]),
+    initials = string.char(u8(s + O["save.initials"]), u8(s + O["save.initials"] + 1), u8(s + O["save.initials"] + 2)),
+    -- board(len_idx)[rank + 1] -> { frames, initials, used }
+    board = function(len_idx)
+      local b = {}
+      for i = 0, 2 do
+        b[i + 1] = record_at(s + O["save.ta_board"] + (len_idx * 3 + i) * O["sizeof.TimeRecord"])
+      end
+      return b
+    end,
   }
 end
 
@@ -173,14 +208,42 @@ function T.menu_start(item)
   T.press(K.A); T.wait(3)
 end
 
--- Press RIGHT on a menu option until reader() returns `value`.
-function T.menu_set(item, reader, value)
-  T.menu_go(item)
+-- Move the cursor of a sub screen (options, mode select) to `item`.
+function T.sub_go(item, count)
+  for _ = 1, count do
+    if T.sub_item() == item then return true end
+    T.press(K.DOWN)
+  end
+  return T.sub_item() == item
+end
+
+-- Options screen: press RIGHT on `opt` until reader() returns `value`, back to the menu.
+function T.option_set(opt, reader, value)
+  if T.screen() ~= T.SCREEN.OPTIONS then T.menu_start(T.MENU.OPTIONS) end
+  T.sub_go(opt, T.OPT.COUNT)
   for _ = 1, 4 do
-    if reader() == value then return true end
+    if reader() == value then break end
     T.press(K.RIGHT)
   end
-  return reader() == value
+  local ok = reader() == value
+  T.press(K.B); T.wait(3)
+  return ok
+end
+
+function T.set_language(lang) return T.option_set(T.OPT.LANGUAGE, function() return T.save().lang end, lang) end
+function T.set_sound(on) return T.option_set(T.OPT.SOUND, function() return T.save().sound_on end, on) end
+
+-- Menu -> mode select -> game
+function T.start_marathon(diff)
+  T.menu_start(T.MENU.MARATHON)
+  T.sub_go(diff, 2)
+  T.press(K.A); T.wait(3)
+end
+
+function T.start_time_attack(len_idx)
+  T.menu_start(T.MENU.TIME_ATTACK)
+  T.sub_go(len_idx, 3)
+  T.press(K.A); T.wait(3)
 end
 
 -- --- in-game helpers ---------------------------------------------------------------

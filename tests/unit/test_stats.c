@@ -12,6 +12,10 @@ TEST(blank_sram_gives_defaults)
     CHECK_EQ(save.sound_on, 1);
     CHECK_EQ(save.marathon_diff, DIFF_EASY);
     CHECK_EQ(save.marathon_best[0], 0);
+    CHECK_EQ(save.ta_length, 0);
+    CHECK_MEM(save.initials, "AAA", 3);
+    for (int l = 0; l < TA_LENGTH_COUNT; l++)
+        for (int i = 0; i < TA_TOP; i++) CHECK_EQ(save.ta_board[l][i].used, 0);
     CHECK(save.rng_state != 0);
 }
 
@@ -45,6 +49,9 @@ TEST(save_then_load_round_trip)
     save.marathon_diff = DIFF_HARD;
     save.marathon_best[1] = 21;
     save.rng_state = 0x12345678;
+    save.ta_length = 2;
+    memcpy(save.initials, "CLM", 3);
+    save.ta_board[1][0] = (TimeRecord){ .frames = 5400, .initials = { 'A', 'B', 'C' }, .used = 1 };
     stats_save();
     memset(&save, 0, sizeof save);
     stats_load();
@@ -59,6 +66,11 @@ TEST(save_then_load_round_trip)
     CHECK_EQ(save.marathon_diff, DIFF_HARD);
     CHECK_EQ(save.marathon_best[1], 21);
     CHECK_EQ(save.rng_state, 0x12345678);
+    CHECK_EQ(save.ta_length, 2);
+    CHECK_MEM(save.initials, "CLM", 3);
+    CHECK_EQ(save.ta_board[1][0].frames, 5400);
+    CHECK_MEM(save.ta_board[1][0].initials, "ABC", 3);
+    CHECK_EQ(save.ta_board[1][1].used, 0);
 }
 
 TEST(sram_is_written_byte_for_byte)
@@ -115,6 +127,15 @@ TEST(out_of_range_difficulty_resets_to_defaults)
     stats_save();
     stats_load();
     CHECK_EQ(save.marathon_diff, DIFF_EASY);
+}
+
+TEST(out_of_range_time_attack_length_resets_to_defaults)
+{
+    stats_load();
+    save.ta_length = TA_LENGTH_COUNT;
+    stats_save();
+    stats_load();
+    CHECK_EQ(save.ta_length, 0);
 }
 
 TEST(all_zero_sram_is_not_valid)
@@ -195,6 +216,7 @@ static const TestCase stats_tests[] = {
     T(save_then_load_round_trip), T(sram_is_written_byte_for_byte), T(corrupted_byte_resets_to_defaults),
     T(wrong_magic_resets_to_defaults), T(wrong_version_resets_to_defaults),
     T(out_of_range_language_resets_to_defaults), T(out_of_range_difficulty_resets_to_defaults),
+    T(out_of_range_time_attack_length_resets_to_defaults),
     T(all_zero_sram_is_not_valid),
     T(record_win_updates_streak_and_distribution), T(record_loss_resets_streak_but_keeps_best),
     T(record_ignores_invalid_guess_counts), T(recent_words_ring_buffer), T(recent_words_are_per_language),

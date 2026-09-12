@@ -6,7 +6,7 @@
 #include "stats.h"
 
 #define SAVE_MAGIC   0x4D544F4Du   // "MOTM"
-#define SAVE_VERSION 4
+#define SAVE_VERSION 5
 
 // Tells emulators and flash carts which backup type the ROM expects.
 const char save_type_id[] __attribute__((aligned(4), used)) = "SRAM_V113";
@@ -45,6 +45,7 @@ static void defaults(void)
     save.version = SAVE_VERSION;
     save.lang = LANG_FR;
     save.sound_on = 1;
+    memcpy(save.initials, "AAA", 3);
     save.rng_state = 0x2545F491u;
 }
 
@@ -56,7 +57,8 @@ void stats_load(void)
     sram_read(&save, sizeof save);
     if (save.magic != SAVE_MAGIC || save.version != SAVE_VERSION
             || save.checksum != checksum(&save) || save.lang >= LANG_COUNT
-            || save.marathon_diff >= DIFF_COUNT || save.sound_on > 1) {
+            || save.marathon_diff >= DIFF_COUNT || save.sound_on > 1
+            || save.ta_length >= TA_LENGTH_COUNT) {
         defaults();
         stats_save();
     }

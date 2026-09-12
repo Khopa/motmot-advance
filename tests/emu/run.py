@@ -66,7 +66,8 @@ def symbol_addresses(elf):
         m = re.match(r"([0-9a-fA-F]+) [BbDdRr] (\w+)$", line)
         if m:
             syms[m.group(2)] = int(m.group(1), 16)
-    for s in ("game", "kb", "save", "marathon", "menu_item", "menu_lang", "frames", "current_screen"):
+    for s in ("game", "kb", "save", "marathon", "ta", "menu_item", "sub_item", "records_page",
+              "menu_lang", "frames", "current_screen"):
         if s not in syms:
             sys.exit(f"symbol {s} not found in {elf}")
     return syms

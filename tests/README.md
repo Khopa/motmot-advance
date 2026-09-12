@@ -12,8 +12,8 @@ Both layers need a build first (`make`); `make check` takes care of it.
 
 ## Unit tests (`tests/unit`)
 
-`logic.c`, `keyboard.c`, `rng.c`, `stats.c`, `sound.c` and `lang.c` (with the
-generated word lists) are compiled with the host `gcc` and `-DHOST_TEST`.
+`logic.c`, `keyboard.c`, `rng.c`, `stats.c`, `sound.c`, `time_attack.c` and
+`lang.c` (with the generated word lists) are compiled with the host `gcc` and `-DHOST_TEST`.
 In that mode `include/common.h` pulls in `tests/unit/host_shim.h` instead of
 libtonc: I/O registers become slots of a `host_io[]` array and cartridge SRAM
 becomes `host_sram[]`, so a test can check what the code *would* have written
@@ -39,6 +39,7 @@ make test TESTFLAGS="-f stats -v"
 | `stats` | defaults on blank SRAM, wait states, byte-for-byte save image, round trip, checksum/magic/version/range corruption, streaks and distribution, recent-words ring |
 | `sound` | init registers, every effect's channel/volume/rate/timing, rests, replacement, termination, the off switch |
 | `lang` | word lists sorted/unique/upper-case, solutions ⊂ valid, keyboard layouts complete, UI strings fit the screen and the font |
+| `time_attack` | MM:SS.CC formatting and capping, leaderboard ranking / insertion / shifting / rejection |
 
 To add a test: write `TEST(...)` in the relevant `test_*.c`, add `T(...)` to
 the suite array. To add a suite: new file + `run_<suite>()` declared and called
@@ -70,9 +71,10 @@ Helpers (see `lib.lua` for the full list):
 | Helper | Purpose |
 |---|---|
 | `T.press(key, hold)`, `T.wait(n)` | input with clean edges, frame waits |
-| `T.boot(lang)`, `T.menu_go/menu_start/menu_set` | navigation using the menu cursor read from RAM |
+| `T.boot(lang)`, `T.menu_go/menu_start`, `T.sub_go` | navigation using the menu cursors read from RAM |
+| `T.start_marathon(diff)`, `T.start_time_attack(len)`, `T.set_language`, `T.set_sound` | mode select and options screens |
 | `T.goto_key(ch)`, `T.type_word(w)`, `T.submit()`, `T.solve()`, `T.wrong_word(used)` | play through the virtual keyboard |
-| `T.game()`, `T.marathon()`, `T.save()`, `T.kb()`, `T.screen()` | state snapshots |
+| `T.game()`, `T.marathon()`, `T.time_attack()`, `T.save()` (incl. `board(len)`), `T.kb()`, `T.screen()` | state snapshots |
 | `T.snd`, `T.snd_reset()` | highest envelope volume seen on each PSG channel |
 | `T.check`, `T.check_eq`, `T.log`, `T.shot` | results (PASS/FAIL lines in `tests/out/<scenario>.log`) |
 
@@ -89,7 +91,7 @@ make emutest SCENARIO=06_quit
 | Scenario | Covers |
 |---|---|
 | `01_boot` | language screen first, toggling, title, START, menu defaults, blank-save defaults |
-| `02_menu` | cursor wrap both ways, language/sound/difficulty options saved, stats screen, title and back |
+| `02_menu` | cursor wrap and auto-repeat, every entry opens its screen and B returns, records pages, options saved, mode-select cursors, title and back |
 | `03_keyboard` | cursor wrap, row changes, auto-repeat, 5-letter limit, B / delete key, enter key |
 | `04_classic_win` | too short + unknown word (buzzer), a valid guess and its colours, win in two, stats update, result screen, replay |
 | `05_classic_lose` | six guesses, LOST, streak reset, result screen |
@@ -97,10 +99,11 @@ make emutest SCENARIO=06_quit
 | `07_marathon_easy` | 3 lives, chained words, pause skip/auto-end, a miss costs a life, keyboard reset, quit records the score, replay resets, lower score keeps the record |
 | `08_marathon_hard` | 5 lives, guesses 1-2 free, 3rd+ cost a life (hurt sound), winning on a costly guess, game over mid-word, records per difficulty |
 | `09_marathon_gameover_easy` | three misses end the run with score 0 |
-| `10_sound` | effects on: menu tick, clicks, reveal notes; off: silence everywhere; setting kept |
-| `11_language` | English: QWERTY, English list; back to French/AZERTY |
-| `12_persistence` | reboot on the save left by the previous scenarios |
-| `13_monkey` | 30000 frames of random input: no freeze, PC always in ROM/IWRAM/BIOS |
+| `10_time_attack` | clock runs and stops on the quit question, missed word = +30 s with the clock paused, 5 words finished, rank, initials entry (UP/DOWN/A/START), leaderboard, replay/abandon, records and mode-select display, a slower run ranks second |
+| `11_sound` | effects on: menu tick, clicks, reveal notes; off: silence everywhere; setting kept |
+| `12_language` | English: QWERTY, English list; back to French/AZERTY |
+| `13_persistence` | reboot on the save left by the previous scenarios (stats, options, marathon bests, time attack record and initials) |
+| `14_monkey` | 30000 frames of random input: no freeze, PC always in ROM/IWRAM/BIOS |
 
 Scenarios run in file-name order and share the save file unless they start
 with `-- @fresh`; `-- @timeout N` overrides the 120 s limit. Requirements: an

@@ -12,7 +12,7 @@ typedef enum {
     FB_CORRECT,     // green: right letter, right position
 } Feedback;
 
-typedef enum { MODE_CLASSIC = 0, MODE_MARATHON = 1 } GameMode;
+typedef enum { MODE_CLASSIC = 0, MODE_MARATHON = 1, MODE_TIME_ATTACK = 2 } GameMode;
 
 typedef enum { DIFF_EASY = 0, DIFF_HARD = 1, DIFF_COUNT } Difficulty;   // Marathon
 
@@ -23,6 +23,17 @@ typedef struct {
     u16  score;                     // words found
     bool new_record;
 } MarathonState;
+
+// A Time Attack run: `total` words as fast as possible, +30 s per missed word
+typedef struct {
+    u8   length_idx;                // index into ta_word_counts
+    u8   total;
+    u8   done;                      // words finished (found or missed)
+    u8   missed;
+    u32  frames;                    // running time incl. penalties
+    bool running;                   // timer active
+    s8   rank;                      // leaderboard rank of the finished run, -1 if none
+} TimeAttackState;
 
 typedef enum { STATUS_PLAYING = 0, STATUS_WON, STATUS_LOST } GameStatus;
 

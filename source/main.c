@@ -1,5 +1,9 @@
-// MotMot Advance — entry point and screen state machine:
-//   language (once, at boot) -> title -> menu -> game -> result -> menu ...
+// MotMot Advance — entry point and screen state machine.
+//
+//   language (once, at boot) -> title -> main menu
+//   main menu -> classic game -> result
+//             -> mode select (marathon difficulty / time attack length) -> game
+//             -> records, statistics, options
 #include <string.h>
 #include "common.h"
 #include "game_state.h"
@@ -11,25 +15,37 @@
 #include "rng.h"
 #include "sound.h"
 #include "stats.h"
+#include "time_attack.h"
 
 typedef enum {
-    SCR_TITLE, SCR_LANG, SCR_MENU, SCR_GAME, SCR_RESULT, SCR_MARATHON_RESULT, SCR_STATS
+    SCR_TITLE, SCR_LANG, SCR_MENU, SCR_OPTIONS, SCR_RECORDS, SCR_MODE_SELECT,
+    SCR_GAME, SCR_RESULT, SCR_MARATHON_RESULT, SCR_TA_RESULT, SCR_STATS
 } Screen;
 
-static GameState game;
-static KbCursor  kb;
-volatile u8      current_screen;    // Screen being run; only read by tests/emu through RAM
-static u32       frames;            // since power-on; entropy for the RNG
-static u8        menu_lang;         // language shown/selected in the menu
-static int       menu_item;
+enum { MENU_CLASSIC, MENU_MARATHON, MENU_TIME_ATTACK, MENU_RECORDS, MENU_STATS, MENU_OPTIONS, MENU_COUNT };
+enum { OPT_LANGUAGE, OPT_SOUND, OPT_COUNT };
+enum { RECORDS_PAGES = TA_LENGTH_COUNT + 1 };     // one per time attack length + marathon
 
-static MarathonState marathon;
+static GameState        game;
+static KbCursor         kb;
+static MarathonState    marathon;
+static TimeAttackState  ta;
+volatile u8             current_screen;     // Screen being run; read by tests/emu through RAM
+static u32              frames;             // since power-on; entropy for the RNG
+static u8               menu_lang;          // language shown/selected in the menus
+static int              menu_item;          // main menu cursor
+static int              sub_item;           // cursor of the options / mode select screens
+static int              records_page;
+static u8               next_mode;          // mode the mode-select screen prepares
 
 static const u8 marathon_hp[DIFF_COUNT] = { 3, 5 };
 
-enum { MENU_LANG, MENU_CLASSIC, MENU_MARATHON, MENU_STATS, MENU_SOUND, MENU_COUNT };
+#define LANG()  (&languages[game.lang])
+#define MLANG() (&languages[menu_lang])
 
-#define LANG() (&languages[game.lang])
+// ---------------------------------------------------------------------------
+// Frame loop
+// ---------------------------------------------------------------------------
 
 static void next_frame(void)
 {
@@ -38,6 +54,7 @@ static void next_frame(void)
     sound_update();
     input_poll();
     frames++;
+    if (ta.running && ta.frames < TA_MAX_FRAMES) ta.frames++;
 }
 
 static void wait_frames(int n)
@@ -55,7 +72,7 @@ static void wait_or_key(int n)
 }
 
 // ---------------------------------------------------------------------------
-// Title
+// Shared drawing
 // ---------------------------------------------------------------------------
 
 static void draw_logo(int ty)
@@ -69,9 +86,44 @@ static void draw_logo(int ty)
     txt_center(ty + 2, "ADVANCE", PAL_TXT_WHITE);
 }
 
+// A centred menu line; the selected one is yellow between "> " and " <".
+static void draw_menu_line(int ty, const char *text, bool selected)
+{
+    int len = strlen(text);
+    int x = (SCREEN_TW - len) / 2;
+    txt_clear_row(ty);
+    txt_puts(x, ty, text, selected ? PAL_TXT_YELLOW : PAL_TXT_WHITE);
+    if (selected) {
+        txt_puts(x - 2, ty, ">", PAL_TXT_GREEN);
+        txt_puts(x + len + 1, ty, "<", PAL_TXT_GREEN);
+    }
+}
+
+// Label at the left, value between < > at the right (options / mode select)
+static void draw_option_line(int ty, const char *label, const char *value, bool selected)
+{
+    txt_clear_row(ty);
+    txt_puts(5, ty, label, selected ? PAL_TXT_YELLOW : PAL_TXT_WHITE);
+    if (selected) txt_puts(3, ty, ">", PAL_TXT_GREEN);
+    txt_puts(17, ty, "<", PAL_TXT_GRAY);
+    txt_puts(19, ty, value, PAL_TXT_WHITE);
+    txt_puts(20 + strlen(value), ty, ">", PAL_TXT_GRAY);
+}
+
+static void draw_time(int tx, int ty, const TimeRecord *r, int pal)
+{
+    char buf[9];
+    if (r && r->used) ta_format_time(r->frames, buf);
+    else memcpy(buf, "--:--.--", 9);
+    txt_puts(tx, ty, buf, pal);
+}
+
+// ---------------------------------------------------------------------------
+// Title and language
+// ---------------------------------------------------------------------------
+
 static Screen title_screen(void)
 {
-    const Language *L = &languages[menu_lang];
     render_clear();
     decor_show(true);
     draw_logo(5);
@@ -79,26 +131,20 @@ static Screen title_screen(void)
 
     for (;;) {
         next_frame();
-        if ((frames & 31) == 0) txt_center(13, L->press_start, PAL_TXT_WHITE);
+        if ((frames & 31) == 0) txt_center(13, MLANG()->press_start, PAL_TXT_WHITE);
         if ((frames & 31) == 20) txt_clear_row(13);
         if (input_hit(KEY_START | KEY_A)) { sfx_play(SFX_SELECT); return SCR_MENU; }
     }
 }
 
-// ---------------------------------------------------------------------------
-// Language selection: shown once at boot (still changeable from the menu)
-// ---------------------------------------------------------------------------
-
 static void draw_lang_choice(void)
 {
     static const int rows[LANG_COUNT] = { 10, 12 };
-    for (int i = 0; i < LANG_COUNT; i++) {
-        txt_puts(10, rows[i], "  ", PAL_TXT_WHITE);
-        txt_puts(12, rows[i], languages[i].name, i == menu_lang ? PAL_TXT_YELLOW : PAL_TXT_WHITE);
-    }
-    txt_puts(10, rows[menu_lang], ">", PAL_TXT_GREEN);
+    for (int i = 0; i < LANG_COUNT; i++)
+        draw_menu_line(rows[i], languages[i].name, i == menu_lang);
 }
 
+// Shown once at boot; the language stays changeable in the options
 static Screen lang_screen(void)
 {
     render_clear();
@@ -126,86 +172,236 @@ static Screen lang_screen(void)
 }
 
 // ---------------------------------------------------------------------------
-// Menu
+// Main menu
 // ---------------------------------------------------------------------------
 
-static void draw_option_value(int ty, const char *value)
+static const char *menu_label(int item)
 {
-    txt_puts(16, ty, "<", PAL_TXT_GRAY);
-    txt_puts(18, ty, value, PAL_TXT_YELLOW);
-    txt_puts(27, ty, ">", PAL_TXT_GRAY);
+    const Language *L = MLANG();
+    switch (item) {
+    case MENU_CLASSIC:     return L->menu_classic;
+    case MENU_MARATHON:    return L->menu_marathon;
+    case MENU_TIME_ATTACK: return L->menu_time_attack;
+    case MENU_RECORDS:     return L->menu_records;
+    case MENU_STATS:       return L->menu_stats;
+    default:               return L->menu_options;
+    }
 }
 
 static void draw_menu(void)
 {
-    const Language *L = &languages[menu_lang];
-    static const int rows[MENU_COUNT] = { 5, 8, 10, 12, 14 };
-
-    txt_clear();
-    cells_clear();
-    draw_logo(1);
-
-    txt_puts(5, rows[MENU_LANG], L->menu_language, PAL_TXT_WHITE);
-    draw_option_value(rows[MENU_LANG], L->name);
-
-    txt_puts(5, rows[MENU_CLASSIC], L->menu_classic, PAL_TXT_WHITE);
-
-    txt_puts(5, rows[MENU_MARATHON], L->menu_marathon, PAL_TXT_WHITE);
-    draw_option_value(rows[MENU_MARATHON], L->difficulty[save.marathon_diff]);
-
-    txt_puts(5, rows[MENU_STATS], L->menu_stats, PAL_TXT_WHITE);
-
-    txt_puts(5, rows[MENU_SOUND], L->menu_sound, PAL_TXT_WHITE);
-    draw_option_value(rows[MENU_SOUND], save.sound_on ? L->on : L->off);
-
-    txt_center(18, L->menu_help, PAL_TXT_DIM);
-    txt_puts(3, rows[menu_item], ">", PAL_TXT_GREEN);
+    for (int i = 0; i < MENU_COUNT; i++)
+        draw_menu_line(6 + i * 2, menu_label(i), i == menu_item);
 }
 
 static Screen menu_screen(void)
 {
     render_clear();
+    draw_logo(1);
+    txt_center(18, MLANG()->menu_help, PAL_TXT_DIM);
     draw_menu();
 
     for (;;) {
         next_frame();
-        bool dirty = false;
-
-        if (input_nav(KEY_UP))   { menu_item = (menu_item + MENU_COUNT - 1) % MENU_COUNT; dirty = true; }
-        if (input_nav(KEY_DOWN)) { menu_item = (menu_item + 1) % MENU_COUNT; dirty = true; }
-        if (dirty) sfx_play(SFX_MOVE);
-
-        // left/right change the value of the highlighted option (A too for
-        // options that cannot be "started")
-        bool lr = input_hit(KEY_LEFT | KEY_RIGHT);
-        bool a  = input_hit(KEY_A) || input_hit(KEY_START);
-        if ((lr || a) && menu_item == MENU_LANG) {
-            menu_lang = (menu_lang + 1) % LANG_COUNT;
-            save.lang = menu_lang;
-            stats_save();
+        int move = 0;
+        if (input_nav(KEY_UP))   move = -1;
+        if (input_nav(KEY_DOWN)) move = 1;
+        if (move) {
+            menu_item = (menu_item + move + MENU_COUNT) % MENU_COUNT;
             sfx_play(SFX_MOVE);
-            dirty = true;
-        } else if ((lr || a) && menu_item == MENU_SOUND) {
-            save.sound_on = !save.sound_on;
-            sound_set_enabled(save.sound_on);
-            stats_save();
+            draw_menu();
+        }
+        if (input_hit(KEY_A | KEY_START)) {
             sfx_play(SFX_SELECT);
-            dirty = true;
-        } else if (lr && menu_item == MENU_MARATHON) {
-            save.marathon_diff = (save.marathon_diff + 1) % DIFF_COUNT;
-            stats_save();
-            sfx_play(SFX_MOVE);
-            dirty = true;
-        } else if (a) {
+            sub_item = 0;
             switch (menu_item) {
-            case MENU_CLASSIC:   sfx_play(SFX_SELECT); game.mode = MODE_CLASSIC;   return SCR_GAME;
-            case MENU_MARATHON:  sfx_play(SFX_SELECT); game.mode = MODE_MARATHON;  return SCR_GAME;
-            case MENU_STATS:     sfx_play(SFX_SELECT); return SCR_STATS;
-            default: break;
+            case MENU_CLASSIC:     game.mode = MODE_CLASSIC;  return SCR_GAME;
+            case MENU_MARATHON:    next_mode = MODE_MARATHON; sub_item = save.marathon_diff; return SCR_MODE_SELECT;
+            case MENU_TIME_ATTACK: next_mode = MODE_TIME_ATTACK; sub_item = save.ta_length; return SCR_MODE_SELECT;
+            case MENU_RECORDS:     return SCR_RECORDS;
+            case MENU_STATS:       return SCR_STATS;
+            default:               return SCR_OPTIONS;
             }
         }
         if (input_hit(KEY_B)) return SCR_TITLE;
-        if (dirty) draw_menu();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Options
+// ---------------------------------------------------------------------------
+
+static void draw_options(void)
+{
+    const Language *L = MLANG();
+    txt_clear();
+    draw_logo(1);
+    txt_center(6, L->options_title, PAL_TXT_YELLOW);
+    draw_option_line(9, L->opt_language, L->name, sub_item == OPT_LANGUAGE);
+    draw_option_line(11, L->opt_sound, save.sound_on ? L->on : L->off, sub_item == OPT_SOUND);
+    txt_center(18, L->menu_help, PAL_TXT_DIM);
+}
+
+static Screen options_screen(void)
+{
+    render_clear();
+    draw_options();
+
+    for (;;) {
+        next_frame();
+        bool dirty = false;
+        if (input_nav(KEY_UP) || input_nav(KEY_DOWN)) {
+            sub_item = (sub_item + 1) % OPT_COUNT;      // two options: any direction toggles
+            sfx_play(SFX_MOVE);
+            dirty = true;
+        }
+        if (input_hit(KEY_LEFT | KEY_RIGHT | KEY_A)) {
+            if (sub_item == OPT_LANGUAGE) {
+                menu_lang = (menu_lang + 1) % LANG_COUNT;
+                save.lang = menu_lang;
+                sfx_play(SFX_MOVE);
+            } else {
+                save.sound_on = !save.sound_on;
+                sound_set_enabled(save.sound_on);
+                sfx_play(SFX_SELECT);
+            }
+            stats_save();
+            dirty = true;
+        }
+        if (dirty) draw_options();
+        if (input_hit(KEY_B | KEY_START)) { sfx_play(SFX_DELETE); return SCR_MENU; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Mode selection: Marathon difficulty or Time Attack length, with the records
+// ---------------------------------------------------------------------------
+
+static void draw_mode_select(void)
+{
+    const Language *L = MLANG();
+    txt_clear();
+    draw_logo(1);
+    if (next_mode == MODE_MARATHON) {
+        txt_center(6, L->menu_marathon, PAL_TXT_YELLOW);
+        for (int d = 0; d < DIFF_COUNT; d++) {
+            int ty = 9 + d * 2;
+            bool sel = sub_item == d;
+            txt_puts(5, ty, L->difficulty[d], sel ? PAL_TXT_YELLOW : PAL_TXT_WHITE);
+            if (sel) txt_puts(3, ty, ">", PAL_TXT_GREEN);
+            txt_puts(17, ty, L->best, PAL_TXT_GRAY);
+            txt_uint(18 + strlen(L->best), ty, save.marathon_best[d], PAL_TXT_WHITE);
+        }
+    } else {
+        txt_center(6, L->menu_time_attack, PAL_TXT_YELLOW);
+        for (int i = 0; i < TA_LENGTH_COUNT; i++) {
+            int ty = 9 + i * 2;
+            bool sel = sub_item == i;
+            int pal = sel ? PAL_TXT_YELLOW : PAL_TXT_WHITE;
+            int x = 5 + txt_uint(5, ty, ta_word_counts[i], pal);
+            txt_puts(x + 1, ty, L->words, pal);
+            if (sel) txt_puts(3, ty, ">", PAL_TXT_GREEN);
+            draw_time(19, ty, &save.ta_board[i][0], PAL_TXT_GRAY);
+        }
+    }
+    txt_center(18, L->select_help, PAL_TXT_DIM);
+}
+
+static Screen mode_select_screen(void)
+{
+    int count = next_mode == MODE_MARATHON ? DIFF_COUNT : TA_LENGTH_COUNT;
+    render_clear();
+    draw_mode_select();
+
+    for (;;) {
+        next_frame();
+        int move = 0;
+        if (input_nav(KEY_UP))   move = -1;
+        if (input_nav(KEY_DOWN)) move = 1;
+        if (move) {
+            sub_item = (sub_item + move + count) % count;
+            sfx_play(SFX_MOVE);
+            draw_mode_select();
+        }
+        if (input_hit(KEY_A | KEY_START)) {
+            sfx_play(SFX_SELECT);
+            if (next_mode == MODE_MARATHON) save.marathon_diff = sub_item;
+            else                            save.ta_length = sub_item;
+            stats_save();
+            game.mode = next_mode;
+            return SCR_GAME;
+        }
+        if (input_hit(KEY_B)) { sfx_play(SFX_DELETE); return SCR_MENU; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Records: one page per Time Attack length, one for the Marathon
+// ---------------------------------------------------------------------------
+
+static void draw_leaderboard(int ty, const TimeRecord board[TA_TOP], int highlight)
+{
+    for (int i = 0; i < TA_TOP; i++, ty += 2) {
+        int pal = i == highlight ? PAL_TXT_GREEN : PAL_TXT_WHITE;
+        txt_uint(8, ty, i + 1, PAL_TXT_GRAY);
+        txt_puts(9, ty, ".", PAL_TXT_GRAY);
+        if (board[i].used) {
+            char ini[4] = { board[i].initials[0], board[i].initials[1], board[i].initials[2], 0 };
+            txt_puts(11, ty, ini, pal);
+            draw_time(15, ty, &board[i], pal);
+        } else {
+            txt_puts(11, ty, "---", PAL_TXT_DIM);
+            draw_time(15, ty, NULL, PAL_TXT_DIM);
+        }
+    }
+}
+
+static void draw_records(void)
+{
+    const Language *L = MLANG();
+    txt_clear();
+    txt_center(1, L->records_title, PAL_TXT_YELLOW);
+    txt_puts(2, 3, "<", PAL_TXT_GRAY);
+    txt_puts(27, 3, ">", PAL_TXT_GRAY);
+    if (records_page < TA_LENGTH_COUNT) {
+        char title[24];
+        int n = ta_word_counts[records_page];
+        int p = 0;
+        for (const char *s = L->menu_time_attack; *s; s++) title[p++] = *s;
+        title[p++] = ' ';
+        if (n >= 10) title[p++] = '0' + n / 10;
+        title[p++] = '0' + n % 10;
+        title[p++] = ' ';
+        for (const char *s = L->words; *s; s++) title[p++] = *s;
+        title[p] = 0;
+        txt_center(3, title, PAL_TXT_WHITE);
+        draw_leaderboard(6, save.ta_board[records_page], -1);
+    } else {
+        txt_center(3, L->menu_marathon, PAL_TXT_WHITE);
+        for (int d = 0; d < DIFF_COUNT; d++) {
+            int ty = 6 + d * 2;
+            txt_puts(8, ty, L->difficulty[d], PAL_TXT_GRAY);
+            txt_uint(19, ty, save.marathon_best[d], PAL_TXT_WHITE);
+        }
+    }
+    txt_center(18, L->records_help, PAL_TXT_DIM);
+}
+
+static Screen records_screen(void)
+{
+    render_clear();
+    draw_records();
+    for (;;) {
+        next_frame();
+        int move = 0;
+        if (input_nav(KEY_LEFT))  move = -1;
+        if (input_nav(KEY_RIGHT)) move = 1;
+        if (move) {
+            records_page = (records_page + move + RECORDS_PAGES) % RECORDS_PAGES;
+            sfx_play(SFX_MOVE);
+            draw_records();
+        }
+        if (input_hit(KEY_B | KEY_A | KEY_START)) { sfx_play(SFX_DELETE); return SCR_MENU; }
     }
 }
 
@@ -236,23 +432,44 @@ static void start_game(u8 lang_id, u8 mode)
         marathon.hp_max = marathon.hp = marathon_hp[marathon.difficulty];
         marathon.score = 0;
         marathon.new_record = false;
+    } else if (mode == MODE_TIME_ATTACK) {
+        memset(&ta, 0, sizeof ta);
+        ta.length_idx = save.ta_length;
+        ta.total = ta_word_counts[ta.length_idx];
+        ta.rank = -1;
     }
     random_word(lang_id, mode);
+    if (mode == MODE_TIME_ATTACK) ta.running = true;
 }
 
-// Row 0: mode name, or "SCORE n" + hearts in Marathon
+static void draw_timer(void)
+{
+    char buf[9];
+    ta_format_time(ta.frames, buf);
+    txt_puts(SCREEN_TW - 9, MSG_TY, buf, PAL_TXT_WHITE);
+}
+
+// Row 0: mode name / score and hearts / word counter and timer
 static void draw_mode_label(void)
 {
     const Language *L = LANG();
     txt_clear_row(MSG_TY);
     if (game.mode == MODE_CLASSIC) {
         txt_center(MSG_TY, L->mode_classic, PAL_TXT_DIM);
-    } else {
-        txt_puts(1, MSG_TY, L->marathon_score, PAL_TXT_GRAY);
-        txt_uint(2 + strlen(L->marathon_score), MSG_TY, marathon.score, PAL_TXT_WHITE);
+    } else if (game.mode == MODE_MARATHON) {
+        txt_puts(1, MSG_TY, L->score, PAL_TXT_GRAY);
+        txt_uint(2 + strlen(L->score), MSG_TY, marathon.score, PAL_TXT_WHITE);
         int x = SCREEN_TW - 1 - marathon.hp_max;
         txt_fill(x, MSG_TY, marathon.hp, '\x04', PAL_TXT_YELLOW);
         txt_fill(x + marathon.hp, MSG_TY, marathon.hp_max - marathon.hp, '\x05', PAL_TXT_DIM);
+    } else {
+        int x = 1;
+        txt_puts(x, MSG_TY, L->word, PAL_TXT_GRAY);
+        x += strlen(L->word) + 1;
+        x += txt_uint(x, MSG_TY, ta.done + 1 <= ta.total ? ta.done + 1 : ta.total, PAL_TXT_WHITE);
+        txt_puts(x, MSG_TY, "/", PAL_TXT_GRAY);
+        txt_uint(x + 1, MSG_TY, ta.total, PAL_TXT_WHITE);
+        draw_timer();
     }
 }
 
@@ -295,13 +512,29 @@ static void reveal_row(int row)
 static bool confirm_quit(void)
 {
     const Language *L = LANG();
+    bool was_running = ta.running;
+    ta.running = false;                                 // the clock stops while asking
     show_message(L->quit_confirm, PAL_TXT_YELLOW);
     sfx_play(SFX_MOVE);
     for (;;) {
         next_frame();
         if (input_hit(KEY_A | KEY_START)) { sfx_play(SFX_SELECT); return true; }
-        if (input_hit(KEY_B | KEY_SELECT)) { sfx_play(SFX_DELETE); draw_mode_label(); return false; }
+        if (input_hit(KEY_B | KEY_SELECT)) {
+            sfx_play(SFX_DELETE);
+            ta.running = was_running;
+            draw_mode_label();
+            return false;
+        }
     }
+}
+
+// Start the next word of a chained mode on the same screen
+static void next_word(void)
+{
+    random_word(game.lang, game.mode);
+    render_grid(&game);
+    render_keyboard(&game, LANG());
+    draw_mode_label();
 }
 
 // Classic: record the result, show the verdict, wait a bit.
@@ -331,7 +564,6 @@ static void marathon_lose_hp(void)
     draw_mode_label();
 }
 
-// Record the run's score; returns true if it is a new best.
 static void marathon_finish(void)
 {
     u16 *best = &save.marathon_best[marathon.difficulty];
@@ -373,12 +605,37 @@ static bool marathon_after_guess(void)
         marathon_finish();
         return true;
     }
+    next_word();
+    return false;
+}
 
-    // next word: same language, fresh grid and keyboard
-    random_word(game.lang, MODE_MARATHON);
-    render_grid(&game);
-    render_keyboard(&game, L);
-    draw_mode_label();
+// After an accepted guess in Time Attack. Returns true when the run is over.
+static bool time_attack_after_guess(void)
+{
+    const Language *L = LANG();
+    if (game.status == STATUS_PLAYING) return false;
+
+    ta.done++;
+    if (game.status == STATUS_WON) {
+        sfx_play(ta.done == ta.total ? SFX_WIN : SFX_CORRECT);
+        show_message(L->win_msgs[game.n_guesses - 1], PAL_TXT_GREEN);
+        if (ta.done < ta.total) wait_frames(30);          // the clock keeps running
+    } else {
+        ta.missed++;
+        ta.frames += TA_PENALTY_FRAMES;
+        ta.running = false;                                // stopped while the word is shown
+        sfx_play(SFX_LOSE);
+        show_lose_message();
+        wait_or_key(120);
+        ta.running = ta.done < ta.total;
+    }
+
+    if (ta.done >= ta.total) {
+        ta.running = false;
+        ta.rank = ta_board_rank(save.ta_board[ta.length_idx], ta.frames);
+        return true;
+    }
+    next_word();
     return false;
 }
 
@@ -394,23 +651,23 @@ static Screen game_screen(void)
     kb.row = 0;
     kb.col = 0;
     update_cursor();
-
-    int msg_timer = 0;
     draw_mode_label();
+    int msg_timer = 0;
 
     for (;;) {
         next_frame();
 
         if (msg_timer > 0 && --msg_timer == 0) draw_mode_label();
+        if (game.mode == MODE_TIME_ATTACK && msg_timer == 0) draw_timer();
 
         if (input_hit(KEY_SELECT)) {
             msg_timer = 0;
             if (!confirm_quit()) continue;
-            if (game.mode == MODE_MARATHON) {           // the run ends here
+            if (game.mode == MODE_MARATHON) {           // the run ends here, score kept
                 marathon_finish();
                 return SCR_MARATHON_RESULT;
             }
-            return SCR_MENU;
+            return SCR_MENU;                            // classic / time attack: abandoned
         }
 
         int dx = 0, dy = 0;
@@ -463,6 +720,8 @@ static Screen game_screen(void)
             render_keyboard(&game, L);
             if (game.mode == MODE_MARATHON) {
                 if (marathon_after_guess()) return SCR_MARATHON_RESULT;
+            } else if (game.mode == MODE_TIME_ATTACK) {
+                if (time_attack_after_guess()) return SCR_TA_RESULT;
             } else if (game.status != STATUS_PLAYING) {
                 finish_game();
                 return SCR_RESULT;
@@ -474,7 +733,7 @@ static Screen game_screen(void)
 }
 
 // ---------------------------------------------------------------------------
-// Statistics / results
+// Results
 // ---------------------------------------------------------------------------
 
 static void draw_stats(const Language *L, int ty, int highlight_row)
@@ -507,28 +766,18 @@ static void draw_stats(const Language *L, int ty, int highlight_row)
         txt_fill(4, ty, w, '\x03', pal);
         txt_uint(5 + w, ty, save.dist[i], PAL_TXT_WHITE);
     }
-
-    // marathon best scores, one line per difficulty
-    ty++;
-    for (int d = 0; d < DIFF_COUNT; d++) {
-        ty++;
-        txt_puts(2, ty, L->menu_marathon, PAL_TXT_GRAY);
-        x = 3 + strlen(L->menu_marathon);
-        txt_puts(x, ty, L->difficulty[d], PAL_TXT_GRAY);
-        txt_uint(x + 1 + strlen(L->difficulty[d]), ty, save.marathon_best[d], PAL_TXT_WHITE);
-    }
 }
 
 static Screen stats_screen(void)
 {
-    const Language *L = &languages[menu_lang];
+    const Language *L = MLANG();
     render_clear();
-    txt_center(1, L->stats_title, PAL_TXT_WHITE);
-    draw_stats(L, 3, -1);
+    txt_center(1, L->stats_title, PAL_TXT_YELLOW);
+    draw_stats(L, 4, -1);
     txt_center(18, L->stats_back, PAL_TXT_DIM);
     for (;;) {
         next_frame();
-        if (input_hit(KEY_B | KEY_A | KEY_START)) return SCR_MENU;
+        if (input_hit(KEY_B | KEY_A | KEY_START)) { sfx_play(SFX_DELETE); return SCR_MENU; }
     }
 }
 
@@ -549,7 +798,7 @@ static Screen result_screen(void)
         w[WORD_LEN] = 0;
         txt_puts(x + n, 1, w, PAL_TXT_WHITE);
     }
-    draw_stats(L, 3, won ? game.n_guesses - 1 : -1);
+    draw_stats(L, 4, won ? game.n_guesses - 1 : -1);
     txt_center(18, L->result_prompt, PAL_TXT_DIM);
 
     for (;;) {
@@ -567,17 +816,98 @@ static Screen marathon_result_screen(void)
     draw_logo(4);
     txt_center(8, L->difficulty[marathon.difficulty], PAL_TXT_GRAY);
 
-    int x = (SCREEN_TW - strlen(L->marathon_score) - 4) / 2;
-    txt_puts(x, 10, L->marathon_score, PAL_TXT_GRAY);
-    txt_uint(x + 1 + strlen(L->marathon_score), 10, marathon.score, PAL_TXT_WHITE);
+    int x = (SCREEN_TW - strlen(L->score) - 4) / 2;
+    txt_puts(x, 10, L->score, PAL_TXT_GRAY);
+    txt_uint(x + 1 + strlen(L->score), 10, marathon.score, PAL_TXT_WHITE);
 
     if (marathon.new_record) {
         txt_center(12, L->new_record, PAL_TXT_GREEN);
     } else {
-        x = (SCREEN_TW - strlen(L->marathon_best) - 4) / 2;
-        txt_puts(x, 12, L->marathon_best, PAL_TXT_GRAY);
-        txt_uint(x + 1 + strlen(L->marathon_best), 12, save.marathon_best[marathon.difficulty], PAL_TXT_WHITE);
+        x = (SCREEN_TW - strlen(L->best) - 4) / 2;
+        txt_puts(x, 12, L->best, PAL_TXT_GRAY);
+        txt_uint(x + 1 + strlen(L->best), 12, save.marathon_best[marathon.difficulty], PAL_TXT_WHITE);
     }
+    txt_center(18, L->result_prompt, PAL_TXT_DIM);
+
+    for (;;) {
+        next_frame();
+        if (input_hit(KEY_A | KEY_START)) { sfx_play(SFX_SELECT); return SCR_GAME; }
+        if (input_hit(KEY_B)) { sfx_play(SFX_SELECT); return SCR_MENU; }
+    }
+}
+
+// Arcade-style initials entry: three letter cells, UP/DOWN change the letter,
+// LEFT/RIGHT/A move, START (or A on the last letter) confirms.
+static void enter_initials(char initials[3])
+{
+    const int ty = 12, tx0 = 12;
+    int pos = 0;
+    memcpy(initials, save.initials, 3);
+
+    for (int i = 0; i < 3; i++) cell_draw(tx0 + i * 2, ty, initials[i], PAL_CELL_TYPED);
+    for (;;) {
+        cursor_set((tx0 + pos * 2) * 8, ty * 8, true);
+        next_frame();
+        bool changed = false;
+        if (input_nav(KEY_UP))   { initials[pos] = initials[pos] == 'Z' ? 'A' : initials[pos] + 1; changed = true; }
+        if (input_nav(KEY_DOWN)) { initials[pos] = initials[pos] == 'A' ? 'Z' : initials[pos] - 1; changed = true; }
+        if (changed) {
+            sfx_play(SFX_MOVE);
+            cell_draw(tx0 + pos * 2, ty, initials[pos], PAL_CELL_TYPED);
+        }
+        if (input_hit(KEY_LEFT) && pos > 0)  { pos--; sfx_play(SFX_DELETE); }
+        if (input_hit(KEY_RIGHT) && pos < 2) { pos++; sfx_play(SFX_KEY); }
+        if (input_hit(KEY_B) && pos > 0)     { pos--; sfx_play(SFX_DELETE); }
+        if (input_hit(KEY_A)) {
+            if (pos < 2) { pos++; sfx_play(SFX_KEY); }
+            else break;
+        }
+        if (input_hit(KEY_START)) break;
+    }
+    sfx_play(SFX_SELECT);
+    cursor_set(0, 0, false);
+    for (int i = 0; i < 3; i++) cell_draw(tx0 + i * 2, ty, initials[i], PAL_CORRECT);
+    memcpy(save.initials, initials, 3);
+}
+
+static Screen ta_result_screen(void)
+{
+    const Language *L = LANG();
+    render_clear();
+    txt_center(1, L->ta_done, PAL_TXT_YELLOW);
+
+    int x = (SCREEN_TW - 2 - 1 - strlen(L->words)) / 2;
+    x += txt_uint(x, 3, ta.total, PAL_TXT_GRAY);
+    txt_puts(x + 1, 3, L->words, PAL_TXT_GRAY);
+
+    x = (SCREEN_TW - strlen(L->time) - 1 - 8) / 2;
+    txt_puts(x, 5, L->time, PAL_TXT_GRAY);
+    TimeRecord run = { .frames = ta.frames, .used = 1 };
+    draw_time(x + 1 + strlen(L->time), 5, &run, PAL_TXT_WHITE);
+    if (ta.missed) {                            // "PENALTIES 2 X 30S"
+        x = (SCREEN_TW - strlen(L->penalties) - 9) / 2;
+        txt_puts(x, 7, L->penalties, PAL_TXT_GRAY);
+        x += strlen(L->penalties) + 1;
+        x += txt_uint(x, 7, ta.missed, PAL_TXT_WHITE);
+        txt_puts(x + 1, 7, "X 30S", PAL_TXT_DIM);
+    }
+
+    TimeRecord *board = save.ta_board[ta.length_idx];
+    int highlight = -1;
+    if (ta.rank >= 0) {
+        txt_center(9, L->new_record, PAL_TXT_GREEN);
+        txt_center(10, L->enter_initials, PAL_TXT_GRAY);
+        txt_center(18, L->initials_help, PAL_TXT_DIM);
+        char initials[3];
+        enter_initials(initials);
+        highlight = ta_board_insert(board, ta.frames, initials);
+        stats_save();
+        wait_frames(30);
+        for (int r = 9; r <= 14; r++) txt_clear_row(r);
+        cells_clear();
+    }
+    draw_leaderboard(9, board, highlight);
+    txt_clear_row(18);
     txt_center(18, L->result_prompt, PAL_TXT_DIM);
 
     for (;;) {
@@ -607,9 +937,13 @@ int main(void)
         case SCR_TITLE:           scr = title_screen();           break;
         case SCR_LANG:            scr = lang_screen();            break;
         case SCR_MENU:            scr = menu_screen();            break;
+        case SCR_OPTIONS:         scr = options_screen();         break;
+        case SCR_RECORDS:         scr = records_screen();         break;
+        case SCR_MODE_SELECT:     scr = mode_select_screen();     break;
         case SCR_GAME:            scr = game_screen();            break;
         case SCR_RESULT:          scr = result_screen();          break;
         case SCR_MARATHON_RESULT: scr = marathon_result_screen(); break;
+        case SCR_TA_RESULT:       scr = ta_result_screen();       break;
         case SCR_STATS:           scr = stats_screen();           break;
         }
     }

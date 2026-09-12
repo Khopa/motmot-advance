@@ -5,6 +5,7 @@
 #include "common.h"
 #include "lang.h"
 #include "game_state.h"
+#include "time_attack.h"
 
 #define RECENT_WORDS 8      // classic-mode words kept to avoid near repeats
 
@@ -25,6 +26,9 @@ typedef struct {
     u16  recent[LANG_COUNT][RECENT_WORDS];
     u8   recent_pos[LANG_COUNT];
     u16  marathon_best[DIFF_COUNT];         // Marathon high score per difficulty
+    TimeRecord ta_board[TA_LENGTH_COUNT][TA_TOP];   // Time Attack leaderboards
+    char initials[3];                       // last initials entered
+    u8   ta_length;                         // last Time Attack length chosen
     u16  checksum;
 } SaveData;
 
