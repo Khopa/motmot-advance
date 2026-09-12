@@ -36,7 +36,8 @@ GFX_SRCS  := $(patsubst %,$(GEN)/gfx_%.c,$(GFX_NAMES))
 GFX_HDRS  := $(patsubst %,$(GEN)/gfx_%.h,$(GFX_NAMES))
 
 SRCS := $(wildcard source/*.c)
-OBJS := $(patsubst source/%.c,$(BUILD)/%.o,$(SRCS))         $(patsubst $(GEN)/%.c,$(BUILD)/%.o,$(GFX_SRCS))
+OBJS := $(patsubst source/%.c,$(BUILD)/%.o,$(SRCS)) \
+        $(patsubst $(GEN)/%.c,$(BUILD)/%.o,$(GFX_SRCS))
 
 .PHONY: all clean run gen assets
 all: $(BUILD)/$(TARGET).gba
